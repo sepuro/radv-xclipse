@@ -1,0 +1,68 @@
+diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
+index ab10c1b..d488b86 100644
+--- a/src/amd/vulkan/radv_image.c
++++ b/src/amd/vulkan/radv_image.c
+@@ -774,10 +774,11 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
+    if (image->vk.external_handle_types)
+       flags |= RADEON_SURF_SHAREABLE;
+ 
++   /* Force RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED for AHB and WSI scanout */
+    if (is_ahb_or_scanout) {
+       flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED;
+    } else if (pdev->info.family == CHIP_ARIEL &&
+-              (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
++              (image->vk.usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
+       flags |= RADEON_SURF_DISABLE_DCC;
+    }
+ 
+@@ -1372,7 +1373,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
+          image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED;
+          image->planes[plane].surface.is_linear = true;
+       } else if (pdev->info.family == CHIP_ARIEL &&
+-                 (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
++                 (image->vk.usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
+          image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
+       }
+ 
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index fae9781..8666faa 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -87,6 +87,9 @@ get_nir_options_for_stage(struct radv_compiler_info *compiler_info, mesa_shader_
+    /* On CHIP_ARIEL, lower mediump / RelaxedPrecision to fp16 to enable packed 16-bit vectorization */
+    if (compiler_info->key.family == CHIP_ARIEL) {
+       options->preserve_mediump = false;
++      if (stage == MESA_SHADER_FRAGMENT || stage == MESA_SHADER_COMPUTE) {
++         options->vectorize_vec2_16bit = true;
++      }
+    }
+ }
+ 
+@@ -815,6 +818,13 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct
+    NIR_PASS(_, nir, nir_lower_global_vars_to_local);
+    NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+ 
++   if (compiler_info->key.family == CHIP_ARIEL &&
++       (nir->info.stage == MESA_SHADER_FRAGMENT ||
++        nir->info.stage == MESA_SHADER_COMPUTE)) {
++      NIR_PASS(_, nir, nir_lower_mediump_vars,
++               nir_var_function_temp | nir_var_shader_temp);
++   }
++
+    nir_lower_subgroups_options lower_subgroup_options = {
+       .subgroup_size = nir->info.api_subgroup_size,
+       .ballot_bit_size = nir->info.api_subgroup_size,
+@@ -853,6 +863,13 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct
+       NIR_PASS(_, nir, nir_opt_find_array_copies);
+       NIR_PASS(_, nir, nir_lower_vars_to_ssa);
+ 
++      if (compiler_info->key.family == CHIP_ARIEL &&
++          (nir->info.stage == MESA_SHADER_FRAGMENT ||
++           nir->info.stage == MESA_SHADER_COMPUTE)) {
++         NIR_PASS(_, nir, nir_opt_algebraic);
++         NIR_PASS(_, nir, nir_opt_constant_folding);
++      }
++
+       radv_optimize_nir(nir, false);
+ 
+       NIR_PASS(_, nir, nir_opt_scalar_array_vars_to_vec, nir_var_function_temp | nir_var_mem_shared);

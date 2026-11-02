@@ -48,9 +48,24 @@ jobs:
       - name: Apply libdrm Patch for Samsung sgpu Kernel
         run: |
           mkdir -p subprojects/packagefiles
-          cp patches/libdrm/01-libdrm-xclipse-sgpu.patch subprojects/packagefiles/01-libdrm-xclipse-sgpu.patch
+          if [ -f "patches/libdrm/01-libdrm-xclipse-mmr-cache.patch" ]; then
+            cp patches/libdrm/01-libdrm-xclipse-mmr-cache.patch subprojects/packagefiles/01-libdrm-xclipse-mmr-cache.patch
+          fi
+          if [ -f "patches/libdrm/01-libdrm-xclipse-sgpu.patch" ]; then
+            cp patches/libdrm/01-libdrm-xclipse-sgpu.patch subprojects/packagefiles/01-libdrm-xclipse-sgpu.patch
+          fi
           if [ -d "subprojects/libdrm-2.4.133" ]; then
-            patch -p1 -N -d subprojects/libdrm-2.4.133 < patches/libdrm/01-libdrm-xclipse-sgpu.patch || true
+            for p in patches/libdrm/*.patch; do
+              if [ -f "$p" ]; then
+                patch -p1 -N -d subprojects/libdrm-2.4.133 < "$p" || true
+              fi
+            done
+          fi
+
+      - name: Apply Mesa Ariel Safe Master Patch
+        run: |
+          if [ -f "patches/mesa/01-ariel-master-safe.patch" ]; then
+            patch -p1 -N < patches/mesa/01-ariel-master-safe.patch || true
           fi
 
       - name: Generate Meson Cross-Compilation File
@@ -67,8 +82,8 @@ jobs:
           pkg-config = 'pkg-config'
 
           [built-in options]
-          c_args = ['-O2']
-          cpp_args = ['-O2']
+          c_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer']
+          cpp_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer']
           cpp_link_args = ['-static-libstdc++']
 
           [host_machine]
@@ -84,7 +99,9 @@ jobs:
             --cross-file build-android/cross-android-aarch64.ini \
             -Dbuildtype=release \
             -Db_ndebug=true \
-            -Db_lto=false \
+            -Db_lto=true \
+            -Db_lto_mode=thin \
+            -Dallow-broken-lto=true \
             -Dplatforms=android \
             -Dplatform-sdk-version=34 \
             -Dandroid-stub=true \
@@ -104,8 +121,8 @@ jobs:
             -Degl=disabled \
             -Dgles1=disabled \
             -Dgles2=disabled \
-            -Dc_args="-O2" \
-            -Dcpp_args="-O2" \
+            -Dc_args="-O2 -march=armv8.2-a+dotprod+fp16 -fno-semantic-interposition -fomit-frame-pointer" \
+            -Dcpp_args="-O2 -march=armv8.2-a+dotprod+fp16 -fno-semantic-interposition -fomit-frame-pointer" \
             -Dallow-fallback-for=libdrm,perfetto \
             --force-fallback-for=expat,libdrm,zlib \
             -Dlibdrm:default_library=static \
@@ -131,7 +148,7 @@ jobs:
             "name": "Custom RADV Xclipse 540 (Mesa ${MESA_VER})",
             "description": "Mesa RADV custom Vulkan driver for Samsung Exynos 1580 (Xclipse 540 / CHIP_ARIEL)",
             "author": "Antigravity & purwowd",
-            "packageVersion": "1.6.1",
+            "packageVersion": "1.8.0",
             "vendor": "Mesa/RADV",
             "driverVersion": "Vulkan 1.3.275",
             "minApi": 34,
@@ -163,10 +180,11 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.6.1-displayfix' }}
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.6.1-displayfix' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.8.0-stable-fp16' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.8.0-stable-fp16' }}"
           files: |
             Custom_RADV_Xclipse540.zip
-            patches/mesa/01-ariel-display-and-sgpu-fix.patch
+            patches/mesa/01-ariel-master-safe.patch
+            patches/libdrm/01-libdrm-xclipse-mmr-cache.patch
             patches/libdrm/01-libdrm-xclipse-sgpu.patch
           generate_release_notes: true
