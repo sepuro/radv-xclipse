@@ -1180,7 +1180,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_fragment_shader_interlock = radv_has_pops(pdev),
       .EXT_global_priority = true,
       .EXT_global_priority_query = true,
-      .EXT_graphics_pipeline_library = !pdev->use_llvm && !(RADV_DEBUG(instance, NO_GPL)),
+      .EXT_graphics_pipeline_library = true,
       .EXT_hdr_metadata = true,
       .EXT_host_image_copy = radv_host_image_copy_enabled(pdev),
       .EXT_host_query_reset = true,
@@ -3266,10 +3266,12 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    radv_physical_device_get_supported_extensions(pdev, &pdev->vk.supported_extensions);
    radv_physical_device_get_features(pdev, &pdev->vk.supported_features);
 
-   /* Enable VK_EXT_graphics_pipeline_library (GPL) and VK_KHR_fragment_shading_rate for CHIP_ARIEL */
+   /* Permanently enable VK_EXT_graphics_pipeline_library (GPL) for all clients */
+   pdev->vk.supported_extensions.EXT_graphics_pipeline_library = true;
+   pdev->vk.supported_features.graphicsPipelineLibrary = true;
+
+   /* Enable VK_KHR_fragment_shading_rate for CHIP_ARIEL */
    if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
-      pdev->vk.supported_extensions.EXT_graphics_pipeline_library = true;
-      pdev->vk.supported_features.graphicsPipelineLibrary = true;
       pdev->vk.supported_extensions.KHR_fragment_shading_rate = true;
       pdev->vk.supported_features.pipelineFragmentShadingRate = true;
       pdev->vk.supported_features.primitiveFragmentShadingRate = true;

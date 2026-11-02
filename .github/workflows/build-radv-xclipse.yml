@@ -96,8 +96,8 @@ jobs:
             -Degl=disabled \
             -Dgles1=disabled \
             -Dgles2=disabled \
-            -Dc_args="-O3 -mcpu=cortex-a720 -mtune=cortex-a720 -fno-semantic-interposition -fomit-frame-pointer -ffast-math" \
-            -Dcpp_args="-O3 -mcpu=cortex-a720 -mtune=cortex-a720 -fno-semantic-interposition -fomit-frame-pointer -ffast-math" \
+            -Dc_args="-O3 -mcpu=cortex-a720 -mtune=cortex-a720 -fno-semantic-interposition -fomit-frame-pointer -ffast-math -ftree-vectorize" \
+            -Dcpp_args="-O3 -mcpu=cortex-a720 -mtune=cortex-a720 -fno-semantic-interposition -fomit-frame-pointer -ffast-math -ftree-vectorize" \
             -Dallow-fallback-for=libdrm,perfetto \
             --force-fallback-for=expat,libdrm,zlib \
             -Dlibdrm:default_library=static \
@@ -155,8 +155,8 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.2.0-performance-boost' }}
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.2.0-performance-boost' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.3.0-universal-perf' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.3.0-universal-perf' }}"
           files: |
             Custom_RADV_Xclipse540.zip
             patches/mesa/01-ariel-ahb-disable-dcc-scanout.patch
@@ -165,4 +165,5 @@ jobs:
             patches/mesa/04-ariel-full-performance-optimizations.patch
             patches/mesa/05-ariel-smart-thermal-and-fps-boost.patch
             patches/mesa/06-ariel-fix-textures-and-stutter.patch
+            patches/mesa/07-ariel-universal-efficiency.patch
           generate_release_notes: true

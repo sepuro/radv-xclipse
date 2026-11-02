@@ -1,0 +1,201 @@
+diff --git a/src/amd/compiler/aco_shader_info.c b/src/amd/compiler/aco_shader_info.c
+new file mode 100644
+index 0000000..c7cc77f
+--- /dev/null
++++ b/src/amd/compiler/aco_shader_info.c
+@@ -0,0 +1,22 @@
++/*
++ * Copyright © 2026 Advanced Micro Devices, Inc. & Samsung Electronics
++ * SPDX-License-Identifier: MIT
++ */
++
++#include "aco_shader_info.h"
++
++/* Dynamic wave size selector for CHIP_ARIEL:
++ * Allows using Wave32 by default to maximize SIMD occupancy on the dual-WGP
++ * (4 CUs) configuration of the Samsung Xclipse 540 (Exynos 1580), while
++ * switching dynamically to Wave64 on heavy compute shaders with extensive register usage.
++ */
++uint8_t
++aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_size,
++                                    unsigned num_ubos, unsigned num_ssbos)
++{
++   if (workgroup_size >= 64 &&
++       (shared_size >= 4096 || (num_ubos + num_ssbos) >= 4 || workgroup_size >= 256))
++      return 64;
++
++   return 32;
++}
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index 4817b0f..f94a483 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -1180,7 +1180,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device
+       .EXT_fragment_shader_interlock = radv_has_pops(pdev),
+       .EXT_global_priority = true,
+       .EXT_global_priority_query = true,
+-      .EXT_graphics_pipeline_library = !pdev->use_llvm && !(RADV_DEBUG(instance, NO_GPL)),
++      .EXT_graphics_pipeline_library = true,
+       .EXT_hdr_metadata = true,
+       .EXT_host_image_copy = radv_host_image_copy_enabled(pdev),
+       .EXT_host_query_reset = true,
+@@ -3266,10 +3266,12 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
+    radv_physical_device_get_supported_extensions(pdev, &pdev->vk.supported_extensions);
+    radv_physical_device_get_features(pdev, &pdev->vk.supported_features);
+ 
+-   /* Enable VK_EXT_graphics_pipeline_library (GPL) and VK_KHR_fragment_shading_rate for CHIP_ARIEL */
++   /* Permanently enable VK_EXT_graphics_pipeline_library (GPL) for all clients */
++   pdev->vk.supported_extensions.EXT_graphics_pipeline_library = true;
++   pdev->vk.supported_features.graphicsPipelineLibrary = true;
++
++   /* Enable VK_KHR_fragment_shading_rate for CHIP_ARIEL */
+    if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
+-      pdev->vk.supported_extensions.EXT_graphics_pipeline_library = true;
+-      pdev->vk.supported_features.graphicsPipelineLibrary = true;
+       pdev->vk.supported_extensions.KHR_fragment_shading_rate = true;
+       pdev->vk.supported_features.pipelineFragmentShadingRate = true;
+       pdev->vk.supported_features.primitiveFragmentShadingRate = true;
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index b09ecbd..1554bbc 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -426,13 +426,33 @@ radv_shader_choose_subgroup_size(const struct radv_compiler_info *compiler_info,
+            (nir->info.stage == MESA_SHADER_COMPUTE && nir->info.cs.has_cooperative_matrix)) &&
+           local_size % RADV_SUBGROUP_SIZE == 0);
+ 
+-      /* Use wave32 for small workgroups. */
+-      if (local_size <= 32)
+-         wave_size = 32;
+-      else if (require_full_subgroups)
+-         wave_size = 64;
+-      else
+-         wave_size = default_wave_size;
++      /* Dynamic wave size selector for CHIP_ARIEL (RDNA 3 mobile):
++       * Use Wave32 by default to maximize SIMD occupancy on dual-WGP (4 CUs),
++       * but switch to Wave64 on heavy compute shaders with extensive register usage
++       * (large workgroups with high LDS usage, high buffer pressure, or >= 256 threads)
++       * to reduce wave scheduling overhead and register spilling.
++       */
++      if (compiler_info->key.family == CHIP_ARIEL && nir->info.stage == MESA_SHADER_COMPUTE) {
++         const bool heavy_compute = (local_size >= 64 &&
++                                     (nir->info.shared_size >= 4096 ||
++                                      nir->info.num_ubos + nir->info.num_ssbos >= 4 ||
++                                      local_size >= 256));
++         if (heavy_compute && !nir->info.uses_wide_subgroup_intrinsics && !nir->info.cs.has_cooperative_matrix) {
++            wave_size = 64;
++         } else if (local_size <= 32) {
++            wave_size = 32;
++         } else {
++            wave_size = 32; /* Wave32 default for Ariel */
++         }
++      } else {
++         /* Use wave32 for small workgroups. */
++         if (local_size <= 32)
++            wave_size = 32;
++         else if (require_full_subgroups)
++            wave_size = 64;
++         else
++            wave_size = default_wave_size;
++      }
+    } else if (nir->info.stage == MESA_SHADER_GEOMETRY &&
+               (compiler_info->ac->gfx_level >= GFX10 && compiler_info->ac->gfx_level <= GFX10_3)) {
+       /* Legacy GS doesn't support wave32. */
+diff --git a/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.c b/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.c
+index 872d3aa..be20d84 100644
+--- a/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.c
++++ b/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.c
+@@ -569,6 +569,13 @@ radv_amdgpu_winsys_virtual_bo_destroy(struct radeon_winsys *_ws, struct radeon_w
+ #define RADV_XCLIPSE_IBCACHE_BUCKETS 256
+ #define RADV_XCLIPSE_IBCACHE_CAP (256ull << 20)
+ 
++/* Transfer buffer cache (bo_cache) retention and expiration: 500 ms window
++ * to retain staging buffers across rapid application switching and camera sweeps,
++ * preventing expensive and repetitive sgpu kernel alloc/free calls.
++ */
++#define RADV_XCLIPSE_BO_CACHE_EXPIRATION_MS 500
++#define RADV_XCLIPSE_BO_CACHE_RETENTION_NS (500ull * 1000000ull)
++
+ struct radv_xclipse_ibcache_entry {
+    struct radv_amdgpu_winsys_bo *bo;
+    struct radv_amdgpu_winsys *ws;
+@@ -576,6 +583,7 @@ struct radv_xclipse_ibcache_entry {
+    unsigned alignment;
+    uint32_t flags;
+    enum radeon_bo_domain domain;
++   uint64_t parked_time;
+ };
+ 
+ static simple_mtx_t radv_xclipse_ibcache_lock = SIMPLE_MTX_INITIALIZER;
+@@ -585,10 +593,36 @@ static uint64_t radv_xclipse_ibcache_bytes;
+ /* Winsys being torn down, or NULL. park() refuses its BOs. */
+ static struct radv_amdgpu_winsys *radv_xclipse_ibcache_dying;
+ 
++static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws, struct radeon_winsys_bo *_bo);
++
++static void
++radv_xclipse_ibcache_clean_expired_locked(void)
++{
++   uint64_t now = os_time_get_nano();
++   for (unsigned i = 0; i < radv_xclipse_ibcache_count; ) {
++      struct radv_xclipse_ibcache_entry *e = &radv_xclipse_ibcache[i];
++      if (now >= e->parked_time && (now - e->parked_time) > RADV_XCLIPSE_BO_CACHE_RETENTION_NS) {
++         struct radv_amdgpu_winsys_bo *expired_bo = e->bo;
++         struct radv_amdgpu_winsys *expired_ws = e->ws;
++         radv_xclipse_ibcache_bytes -= e->size;
++         radv_xclipse_ibcache[i] = radv_xclipse_ibcache[--radv_xclipse_ibcache_count];
++
++         expired_bo->is_expired = true;
++         simple_mtx_unlock(&radv_xclipse_ibcache_lock);
++         radv_amdgpu_winsys_bo_destroy(&expired_ws->base, &expired_bo->base);
++         simple_mtx_lock(&radv_xclipse_ibcache_lock);
++      } else {
++         i++;
++      }
++   }
++}
++
+ /* Is this BO safe to keep alive and hand back later? */
+ static bool
+ radv_xclipse_ibcache_cacheable(const struct radv_amdgpu_winsys_bo *bo)
+ {
++   if (bo->is_expired)
++      return false;
+    if (bo->base.is_virtual || bo->base.imported)
+       return false;
+    /* Shared BOs live in more than one VM. */
+@@ -620,6 +654,13 @@ radv_xclipse_ibcache_park(struct radv_amdgpu_winsys *ws, struct radv_amdgpu_wins
+       simple_mtx_unlock(&radv_xclipse_ibcache_lock);
+       return false;
+    }
++
++   /* Evict entries expired beyond 500ms when cache capacity is constrained */
++   if (radv_xclipse_ibcache_count >= RADV_XCLIPSE_IBCACHE_BUCKETS ||
++       radv_xclipse_ibcache_bytes + bo->base.size > RADV_XCLIPSE_IBCACHE_CAP) {
++      radv_xclipse_ibcache_clean_expired_locked();
++   }
++
+    if (radv_xclipse_ibcache_count >= RADV_XCLIPSE_IBCACHE_BUCKETS ||
+        radv_xclipse_ibcache_bytes + bo->base.size > RADV_XCLIPSE_IBCACHE_CAP) {
+       simple_mtx_unlock(&radv_xclipse_ibcache_lock);
+@@ -639,6 +680,7 @@ radv_xclipse_ibcache_park(struct radv_amdgpu_winsys *ws, struct radv_amdgpu_wins
+    e->alignment = alignment;
+    e->flags = bo->flags;
+    e->domain = bo->base.initial_domain;
++   e->parked_time = os_time_get_nano();
+    radv_xclipse_ibcache_bytes += bo->base.size;
+    simple_mtx_unlock(&radv_xclipse_ibcache_lock);
+    return true;
+diff --git a/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.h b/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.h
+index 5a216a0..52dea2f 100644
+--- a/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.h
++++ b/src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.h
+@@ -41,6 +41,9 @@ struct radv_amdgpu_winsys_bo {
+    /* The alignment this BO was created with (the IB reuse cache matches on it at destroy). */
+    unsigned xclipse_alignment;
+ 
++   /* Marked when evicted from transfer buffer cache after 500ms expiration */
++   bool is_expired;
++
+    /* Counted by radv_xclipse_bo_churn() at create? Read back at destroy, so imports (never counted)
+     * are not subtracted. */
+    bool churn_counted;

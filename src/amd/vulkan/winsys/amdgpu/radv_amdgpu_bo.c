@@ -569,6 +569,13 @@ radv_amdgpu_winsys_virtual_bo_destroy(struct radeon_winsys *_ws, struct radeon_w
 #define RADV_XCLIPSE_IBCACHE_BUCKETS 256
 #define RADV_XCLIPSE_IBCACHE_CAP (256ull << 20)
 
+/* Transfer buffer cache (bo_cache) retention and expiration: 500 ms window
+ * to retain staging buffers across rapid application switching and camera sweeps,
+ * preventing expensive and repetitive sgpu kernel alloc/free calls.
+ */
+#define RADV_XCLIPSE_BO_CACHE_EXPIRATION_MS 500
+#define RADV_XCLIPSE_BO_CACHE_RETENTION_NS (500ull * 1000000ull)
+
 struct radv_xclipse_ibcache_entry {
    struct radv_amdgpu_winsys_bo *bo;
    struct radv_amdgpu_winsys *ws;
@@ -576,6 +583,7 @@ struct radv_xclipse_ibcache_entry {
    unsigned alignment;
    uint32_t flags;
    enum radeon_bo_domain domain;
+   uint64_t parked_time;
 };
 
 static simple_mtx_t radv_xclipse_ibcache_lock = SIMPLE_MTX_INITIALIZER;
@@ -585,10 +593,36 @@ static uint64_t radv_xclipse_ibcache_bytes;
 /* Winsys being torn down, or NULL. park() refuses its BOs. */
 static struct radv_amdgpu_winsys *radv_xclipse_ibcache_dying;
 
+static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws, struct radeon_winsys_bo *_bo);
+
+static void
+radv_xclipse_ibcache_clean_expired_locked(void)
+{
+   uint64_t now = os_time_get_nano();
+   for (unsigned i = 0; i < radv_xclipse_ibcache_count; ) {
+      struct radv_xclipse_ibcache_entry *e = &radv_xclipse_ibcache[i];
+      if (now >= e->parked_time && (now - e->parked_time) > RADV_XCLIPSE_BO_CACHE_RETENTION_NS) {
+         struct radv_amdgpu_winsys_bo *expired_bo = e->bo;
+         struct radv_amdgpu_winsys *expired_ws = e->ws;
+         radv_xclipse_ibcache_bytes -= e->size;
+         radv_xclipse_ibcache[i] = radv_xclipse_ibcache[--radv_xclipse_ibcache_count];
+
+         expired_bo->is_expired = true;
+         simple_mtx_unlock(&radv_xclipse_ibcache_lock);
+         radv_amdgpu_winsys_bo_destroy(&expired_ws->base, &expired_bo->base);
+         simple_mtx_lock(&radv_xclipse_ibcache_lock);
+      } else {
+         i++;
+      }
+   }
+}
+
 /* Is this BO safe to keep alive and hand back later? */
 static bool
 radv_xclipse_ibcache_cacheable(const struct radv_amdgpu_winsys_bo *bo)
 {
+   if (bo->is_expired)
+      return false;
    if (bo->base.is_virtual || bo->base.imported)
       return false;
    /* Shared BOs live in more than one VM. */
@@ -620,6 +654,13 @@ radv_xclipse_ibcache_park(struct radv_amdgpu_winsys *ws, struct radv_amdgpu_wins
       simple_mtx_unlock(&radv_xclipse_ibcache_lock);
       return false;
    }
+
+   /* Evict entries expired beyond 500ms when cache capacity is constrained */
+   if (radv_xclipse_ibcache_count >= RADV_XCLIPSE_IBCACHE_BUCKETS ||
+       radv_xclipse_ibcache_bytes + bo->base.size > RADV_XCLIPSE_IBCACHE_CAP) {
+      radv_xclipse_ibcache_clean_expired_locked();
+   }
+
    if (radv_xclipse_ibcache_count >= RADV_XCLIPSE_IBCACHE_BUCKETS ||
        radv_xclipse_ibcache_bytes + bo->base.size > RADV_XCLIPSE_IBCACHE_CAP) {
       simple_mtx_unlock(&radv_xclipse_ibcache_lock);
@@ -639,6 +680,7 @@ radv_xclipse_ibcache_park(struct radv_amdgpu_winsys *ws, struct radv_amdgpu_wins
    e->alignment = alignment;
    e->flags = bo->flags;
    e->domain = bo->base.initial_domain;
+   e->parked_time = os_time_get_nano();
    radv_xclipse_ibcache_bytes += bo->base.size;
    simple_mtx_unlock(&radv_xclipse_ibcache_lock);
    return true;

@@ -426,13 +426,33 @@ radv_shader_choose_subgroup_size(const struct radv_compiler_info *compiler_info,
            (nir->info.stage == MESA_SHADER_COMPUTE && nir->info.cs.has_cooperative_matrix)) &&
           local_size % RADV_SUBGROUP_SIZE == 0);
 
-      /* Use wave32 for small workgroups. */
-      if (local_size <= 32)
-         wave_size = 32;
-      else if (require_full_subgroups)
-         wave_size = 64;
-      else
-         wave_size = default_wave_size;
+      /* Dynamic wave size selector for CHIP_ARIEL (RDNA 3 mobile):
+       * Use Wave32 by default to maximize SIMD occupancy on dual-WGP (4 CUs),
+       * but switch to Wave64 on heavy compute shaders with extensive register usage
+       * (large workgroups with high LDS usage, high buffer pressure, or >= 256 threads)
+       * to reduce wave scheduling overhead and register spilling.
+       */
+      if (compiler_info->key.family == CHIP_ARIEL && nir->info.stage == MESA_SHADER_COMPUTE) {
+         const bool heavy_compute = (local_size >= 64 &&
+                                     (nir->info.shared_size >= 4096 ||
+                                      nir->info.num_ubos + nir->info.num_ssbos >= 4 ||
+                                      local_size >= 256));
+         if (heavy_compute && !nir->info.uses_wide_subgroup_intrinsics && !nir->info.cs.has_cooperative_matrix) {
+            wave_size = 64;
+         } else if (local_size <= 32) {
+            wave_size = 32;
+         } else {
+            wave_size = 32; /* Wave32 default for Ariel */
+         }
+      } else {
+         /* Use wave32 for small workgroups. */
+         if (local_size <= 32)
+            wave_size = 32;
+         else if (require_full_subgroups)
+            wave_size = 64;
+         else
+            wave_size = default_wave_size;
+      }
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY &&
               (compiler_info->ac->gfx_level >= GFX10 && compiler_info->ac->gfx_level <= GFX10_3)) {
       /* Legacy GS doesn't support wave32. */

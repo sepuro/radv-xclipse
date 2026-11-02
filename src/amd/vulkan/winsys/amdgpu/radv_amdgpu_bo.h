@@ -41,6 +41,9 @@ struct radv_amdgpu_winsys_bo {
    /* The alignment this BO was created with (the IB reuse cache matches on it at destroy). */
    unsigned xclipse_alignment;
 
+   /* Marked when evicted from transfer buffer cache after 500ms expiration */
+   bool is_expired;
+
    /* Counted by radv_xclipse_bo_churn() at create? Read back at destroy, so imports (never counted)
     * are not subtracted. */
    bool churn_counted;
