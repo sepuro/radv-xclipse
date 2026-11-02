@@ -433,16 +433,10 @@ radv_shader_choose_subgroup_size(const struct radv_compiler_info *compiler_info,
        * to reduce wave scheduling overhead and register spilling.
        */
       if (compiler_info->key.family == CHIP_ARIEL && nir->info.stage == MESA_SHADER_COMPUTE) {
-         const bool heavy_compute = (local_size >= 64 &&
-                                     (nir->info.shared_size >= 4096 ||
-                                      nir->info.num_ubos + nir->info.num_ssbos >= 4 ||
-                                      local_size >= 256));
-         if (heavy_compute && !nir->info.uses_wide_subgroup_intrinsics && !nir->info.cs.has_cooperative_matrix) {
-            wave_size = 64;
-         } else if (local_size <= 32) {
+         wave_size = aco_compiler_ariel_select_wave_size(local_size, nir->info.shared_size,
+                                                         nir->info.num_ubos, nir->info.num_ssbos);
+         if (nir->info.uses_wide_subgroup_intrinsics || nir->info.cs.has_cooperative_matrix) {
             wave_size = 32;
-         } else {
-            wave_size = 32; /* Wave32 default for Ariel */
          }
       } else {
          /* Use wave32 for small workgroups. */

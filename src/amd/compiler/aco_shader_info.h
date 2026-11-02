@@ -270,6 +270,10 @@ struct aco_trap_handler_layout {
    uint32_t lds[MAX_LDS_SIZE / 4];
 };
 
+uint8_t
+aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_size,
+                                    unsigned num_ubos, unsigned num_ssbos);
+
 #ifdef __cplusplus
 }
 #endif

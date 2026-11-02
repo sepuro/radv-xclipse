@@ -1,0 +1,429 @@
+diff --git a/.github/workflows/build-radv-xclipse.yml b/.github/workflows/build-radv-xclipse.yml
+index a63d1d3..408d36b 100644
+--- a/.github/workflows/build-radv-xclipse.yml
++++ b/.github/workflows/build-radv-xclipse.yml
+@@ -59,6 +59,8 @@ jobs:
+           pkg-config = 'pkg-config'
+ 
+           [built-in options]
++          c_args = ['-O3', '-mcpu=cortex-a720', '-mtune=cortex-a720', '-fno-semantic-interposition', '-fomit-frame-pointer', '-ffast-math', '-ftree-vectorize']
++          cpp_args = ['-O3', '-mcpu=cortex-a720', '-mtune=cortex-a720', '-fno-semantic-interposition', '-fomit-frame-pointer', '-ffast-math', '-ftree-vectorize']
+           cpp_link_args = ['-static-libstdc++']
+ 
+           [host_machine]
+@@ -155,8 +157,8 @@ jobs:
+         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+         uses: softprops/action-gh-release@v2
+         with:
+-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.3.0-universal-perf' }}
+-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.3.0-universal-perf' }}"
++          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.4.0-ultimate-master' }}
++          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.4.0-ultimate-master' }}"
+           files: |
+             Custom_RADV_Xclipse540.zip
+             patches/mesa/01-ariel-ahb-disable-dcc-scanout.patch
+@@ -166,4 +168,5 @@ jobs:
+             patches/mesa/05-ariel-smart-thermal-and-fps-boost.patch
+             patches/mesa/06-ariel-fix-textures-and-stutter.patch
+             patches/mesa/07-ariel-universal-efficiency.patch
++            patches/mesa/08-ariel-ultimate-master-patch.patch
+           generate_release_notes: true
+diff --git a/patches/mesa/08-ariel-ultimate-master-patch.patch b/patches/mesa/08-ariel-ultimate-master-patch.patch
+new file mode 100644
+index 0000000..cc7324c
+--- /dev/null
++++ b/patches/mesa/08-ariel-ultimate-master-patch.patch
+@@ -0,0 +1,181 @@
++diff --git a/src/amd/compiler/aco_shader_info.h b/src/amd/compiler/aco_shader_info.h
++index 65cd591..57e6111 100644
++--- a/src/amd/compiler/aco_shader_info.h
+++++ b/src/amd/compiler/aco_shader_info.h
++@@ -270,6 +270,10 @@ struct aco_trap_handler_layout {
++    uint32_t lds[MAX_LDS_SIZE / 4];
++ };
++ 
+++uint8_t
+++aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_size,
+++                                    unsigned num_ubos, unsigned num_ssbos);
+++
++ #ifdef __cplusplus
++ }
++ #endif
++diff --git a/src/amd/vulkan/radv_android.c b/src/amd/vulkan/radv_android.c
++index 1735291..a8984d1 100644
++--- a/src/amd/vulkan/radv_android.c
+++++ b/src/amd/vulkan/radv_android.c
++@@ -284,17 +284,44 @@ radv_QueueSignalReleaseImageANDROID(VkQueue queue_h, uint32_t waitSemaphoreCount
++    vk_xclipse_perf_present();
++    u_xclipse_prof_frame();
++ 
++-   return vk_common_QueueSignalReleaseImageANDROID(queue_h, waitSemaphoreCount, pWaitSemaphores,
++-                                                   image_h, pNativeFenceFd);
+++   int local_fence_fd = -1;
+++   int *fence_fd_ptr = pNativeFenceFd ? pNativeFenceFd : &local_fence_fd;
+++
+++   VkResult result = vk_common_QueueSignalReleaseImageANDROID(queue_h, waitSemaphoreCount, pWaitSemaphores,
+++                                                             image_h, fence_fd_ptr);
+++
+++   if (!pNativeFenceFd && local_fence_fd >= 0) {
+++      close(local_fence_fd);
+++   }
+++
+++   return result;
++ }
++ 
++ VKAPI_ATTR VkResult VKAPI_CALL
++ radv_AcquireImageANDROID(VkDevice device, VkImage image, int nativeFenceFd,
++                          VkSemaphore semaphore, VkFence fence)
++ {
+++   /* Ensure proper ownership handover of the native fence descriptor.
+++    * vk_common_AcquireImageANDROID handles closing the fd on errors or when unused. */
++    return vk_common_AcquireImageANDROID(device, image, nativeFenceFd, semaphore, fence);
++ }
++ 
+++/* Ensure HMI symbol is exported publicly and preserved for AdrenoTools and custom ICD loaders */
+++#if DETECT_OS_ANDROID
+++#include <hardware/hardware.h>
+++#include <hardware/hwvulkan.h>
+++
+++extern struct hwvulkan_module_t HAL_MODULE_INFO_SYM;
+++PUBLIC const struct hwvulkan_module_t *radv_get_hmi_module(void)
+++{
+++   return &HAL_MODULE_INFO_SYM;
+++}
+++
+++#if defined(__GNUC__)
+++extern struct hwvulkan_module_t HMI __attribute__((visibility("default")));
+++#endif
+++#endif
+++
++ VKAPI_ATTR VkResult VKAPI_CALL
++ radv_GetSwapchainGrallocUsageANDROID(VkDevice device, VkFormat format,
++                                      VkImageUsageFlags imageUsage,
++diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
++index 7a4f1b1..7b80616 100644
++--- a/src/amd/vulkan/radv_cmd_buffer.c
+++++ b/src/amd/vulkan/radv_cmd_buffer.c
++@@ -8472,7 +8472,7 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2
++       flush_bits |= AC_BARRIER_INV_VMEM;
++       if (flush_L2_metadata)
++          flush_bits |= AC_BARRIER_INV_L2_METADATA;
++-      if (!image_is_coherent || (pdev->info.family == CHIP_ARIEL && (dst_flags & VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)))
+++      if (!image_is_coherent || (pdev->info.family == CHIP_ARIEL && (dst_flags & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT))))
++          flush_bits |= AC_BARRIER_INV_L2;
++    }
++ 
++@@ -17204,10 +17204,14 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
++                                                      &barrier->subresourceRange, barrier->pNext);
++ 
++          if (pdev->info.family == CHIP_ARIEL) {
++-            if (((barrier->srcAccessMask & (VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)) ||
++-                 barrier->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) &&
++-                ((barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT)) ||
++-                 barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)) {
+++            bool is_texture_read = (barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT |
+++                                                              VK_ACCESS_2_SHADER_READ_BIT |
+++                                                              VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT)) ||
+++                                   barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ||
+++                                   barrier->newLayout == VK_IMAGE_LAYOUT_GENERAL ||
+++                                   barrier->newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ||
+++                                   barrier->newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR;
+++            if (is_texture_read || barrier->oldLayout != barrier->newLayout) {
++                dst_flush_bits |= AC_BARRIER_INV_VMEM | AC_BARRIER_INV_L2;
++             }
++          }
++diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
++index be35830..48d85ff 100644
++--- a/src/amd/vulkan/radv_image.c
+++++ b/src/amd/vulkan/radv_image.c
++@@ -774,10 +774,10 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
++    if (image->vk.external_handle_types)
++       flags |= RADEON_SURF_SHAREABLE;
++ 
++-   if (is_ahb_or_scanout ||
++-       (pdev->info.family == CHIP_ARIEL &&
++-        (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))))
++-      flags |= RADEON_SURF_DISABLE_DCC | (is_ahb_or_scanout ? RADEON_SURF_SCANOUT : 0);
+++   /* Strictly restrict RADEON_SURF_DISABLE_DCC and RADEON_SURF_SCANOUT to external AHB or scanout images,
+++    * preserving DCC compression and Fast Clear on internal color attachments and render targets for CHIP_ARIEL */
+++   if (is_ahb_or_scanout)
+++      flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT;
++ 
++    if (alignment && alignment->maximumRequestedAlignment) {
++       bool is_4k_capable;
++@@ -1369,9 +1369,6 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
++           image->vk.wsi_legacy_scanout) {
++          image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT;
++          image->planes[plane].surface.is_linear = true;
++-      } else if (pdev->info.family == CHIP_ARIEL &&
++-                 (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
++-         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
++       }
++ 
++       if (plane > 0 &&
++diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
++index 1554bbc..fae9781 100644
++--- a/src/amd/vulkan/radv_shader.c
+++++ b/src/amd/vulkan/radv_shader.c
++@@ -433,16 +433,10 @@ radv_shader_choose_subgroup_size(const struct radv_compiler_info *compiler_info,
++        * to reduce wave scheduling overhead and register spilling.
++        */
++       if (compiler_info->key.family == CHIP_ARIEL && nir->info.stage == MESA_SHADER_COMPUTE) {
++-         const bool heavy_compute = (local_size >= 64 &&
++-                                     (nir->info.shared_size >= 4096 ||
++-                                      nir->info.num_ubos + nir->info.num_ssbos >= 4 ||
++-                                      local_size >= 256));
++-         if (heavy_compute && !nir->info.uses_wide_subgroup_intrinsics && !nir->info.cs.has_cooperative_matrix) {
++-            wave_size = 64;
++-         } else if (local_size <= 32) {
+++         wave_size = aco_compiler_ariel_select_wave_size(local_size, nir->info.shared_size,
+++                                                         nir->info.num_ubos, nir->info.num_ssbos);
+++         if (nir->info.uses_wide_subgroup_intrinsics || nir->info.cs.has_cooperative_matrix) {
++             wave_size = 32;
++-         } else {
++-            wave_size = 32; /* Wave32 default for Ariel */
++          }
++       } else {
++          /* Use wave32 for small workgroups. */
++diff --git a/src/util/disk_cache.c b/src/util/disk_cache.c
++index 50265d4..f3e0fa8 100644
++--- a/src/util/disk_cache.c
+++++ b/src/util/disk_cache.c
++@@ -225,12 +225,15 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
++    uint64_t max_size = 0;
++    const char *max_size_str;
++ 
++-#if defined(ANDROID) || defined(__ANDROID__)
+++#if defined(ANDROID) || defined(__ANDROID__) || DETECT_OS_ANDROID
++    if (!os_get_option_secure("XDG_CACHE_HOME") && !os_get_option("MESA_SHADER_CACHE_DIR") && !os_get_option("MESA_GLSL_CACHE_DIR")) {
++       FILE *f = fopen("/proc/self/cmdline", "r");
++       if (f) {
++          char pkg[256] = {0};
++-         if (fgets(pkg, sizeof(pkg), f)) {
+++         size_t n = fread(pkg, 1, sizeof(pkg) - 1, f);
+++         fclose(f);
+++         if (n > 0) {
+++            pkg[n] = '\0';
++             char *colon = strchr(pkg, ':');
++             if (colon)
++                *colon = '\0';
++@@ -241,7 +244,6 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
++                disk_cache_set_default_dir(app_cache);
++             }
++          }
++-         fclose(f);
++       }
++    }
++ #endif
+diff --git a/src/amd/compiler/aco_shader_info.h b/src/amd/compiler/aco_shader_info.h
+index 65cd591..57e6111 100644
+--- a/src/amd/compiler/aco_shader_info.h
++++ b/src/amd/compiler/aco_shader_info.h
+@@ -270,6 +270,10 @@ struct aco_trap_handler_layout {
+    uint32_t lds[MAX_LDS_SIZE / 4];
+ };
+ 
++uint8_t
++aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_size,
++                                    unsigned num_ubos, unsigned num_ssbos);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/amd/compiler/meson.build b/src/amd/compiler/meson.build
+index 948cd34..65d3dc8 100644
+--- a/src/amd/compiler/meson.build
++++ b/src/amd/compiler/meson.build
+@@ -73,6 +73,7 @@ libaco_files = files(
+   'aco_repair_ssa.cpp',
+   'aco_scheduler.cpp',
+   'aco_scheduler_ilp.cpp',
++  'aco_shader_info.c',
+   'aco_spill.cpp',
+   'aco_spill_preserved.cpp',
+   'aco_ssa_elimination.cpp',
+diff --git a/src/amd/vulkan/radv_android.c b/src/amd/vulkan/radv_android.c
+index 1735291..748fa3d 100644
+--- a/src/amd/vulkan/radv_android.c
++++ b/src/amd/vulkan/radv_android.c
+@@ -284,17 +284,47 @@ radv_QueueSignalReleaseImageANDROID(VkQueue queue_h, uint32_t waitSemaphoreCount
+    vk_xclipse_perf_present();
+    u_xclipse_prof_frame();
+ 
+-   return vk_common_QueueSignalReleaseImageANDROID(queue_h, waitSemaphoreCount, pWaitSemaphores,
+-                                                   image_h, pNativeFenceFd);
++   int local_fence_fd = -1;
++   int *fence_fd_ptr = pNativeFenceFd ? pNativeFenceFd : &local_fence_fd;
++
++   VkResult result = vk_common_QueueSignalReleaseImageANDROID(queue_h, waitSemaphoreCount, pWaitSemaphores,
++                                                             image_h, fence_fd_ptr);
++
++   if (!pNativeFenceFd && local_fence_fd >= 0) {
++      close(local_fence_fd);
++   }
++
++   return result;
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+ radv_AcquireImageANDROID(VkDevice device, VkImage image, int nativeFenceFd,
+                          VkSemaphore semaphore, VkFence fence)
+ {
++   /* Ensure proper ownership handover of the native fence descriptor.
++    * vk_common_AcquireImageANDROID handles closing the fd on errors or when unused. */
+    return vk_common_AcquireImageANDROID(device, image, nativeFenceFd, semaphore, fence);
+ }
+ 
++/* Ensure HMI symbol is exported publicly and preserved for AdrenoTools and custom ICD loaders */
++#if DETECT_OS_ANDROID
++#include <hardware/hardware.h>
++#include <hardware/hwvulkan.h>
++
++extern struct hwvulkan_module_t HAL_MODULE_INFO_SYM;
++
++PUBLIC const struct hwvulkan_module_t *radv_get_hmi_module(void);
++
++PUBLIC const struct hwvulkan_module_t *radv_get_hmi_module(void)
++{
++   return &HAL_MODULE_INFO_SYM;
++}
++
++#if defined(__GNUC__)
++extern struct hwvulkan_module_t HMI __attribute__((visibility("default")));
++#endif
++#endif
++
+ VKAPI_ATTR VkResult VKAPI_CALL
+ radv_GetSwapchainGrallocUsageANDROID(VkDevice device, VkFormat format,
+                                      VkImageUsageFlags imageUsage,
+diff --git a/src/amd/vulkan/radv_android.h b/src/amd/vulkan/radv_android.h
+index 84939a3..13a9c87 100644
+--- a/src/amd/vulkan/radv_android.h
++++ b/src/amd/vulkan/radv_android.h
+@@ -48,6 +48,11 @@ unsigned radv_ahb_format_for_vk_format(VkFormat vk_format);
+ 
+ VkFormat radv_select_android_external_format(const void *next, VkFormat default_format);
+ 
++#if DETECT_OS_ANDROID
++struct hwvulkan_module_t;
++const struct hwvulkan_module_t *radv_get_hmi_module(void);
++#endif
++
+ VkResult radv_import_ahb_memory(struct radv_device *device, struct radv_device_memory *mem, unsigned priority);
+ 
+ bool radv_android_gralloc_supports_format(VkFormat format, VkImageUsageFlags2KHR usage);
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 7a4f1b1..7b80616 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -8472,7 +8472,7 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2
+       flush_bits |= AC_BARRIER_INV_VMEM;
+       if (flush_L2_metadata)
+          flush_bits |= AC_BARRIER_INV_L2_METADATA;
+-      if (!image_is_coherent || (pdev->info.family == CHIP_ARIEL && (dst_flags & VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)))
++      if (!image_is_coherent || (pdev->info.family == CHIP_ARIEL && (dst_flags & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT))))
+          flush_bits |= AC_BARRIER_INV_L2;
+    }
+ 
+@@ -17204,10 +17204,14 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
+                                                      &barrier->subresourceRange, barrier->pNext);
+ 
+          if (pdev->info.family == CHIP_ARIEL) {
+-            if (((barrier->srcAccessMask & (VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)) ||
+-                 barrier->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) &&
+-                ((barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT)) ||
+-                 barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)) {
++            bool is_texture_read = (barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT |
++                                                              VK_ACCESS_2_SHADER_READ_BIT |
++                                                              VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT)) ||
++                                   barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ||
++                                   barrier->newLayout == VK_IMAGE_LAYOUT_GENERAL ||
++                                   barrier->newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ||
++                                   barrier->newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR;
++            if (is_texture_read || barrier->oldLayout != barrier->newLayout) {
+                dst_flush_bits |= AC_BARRIER_INV_VMEM | AC_BARRIER_INV_L2;
+             }
+          }
+diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
+index be35830..48d85ff 100644
+--- a/src/amd/vulkan/radv_image.c
++++ b/src/amd/vulkan/radv_image.c
+@@ -774,10 +774,10 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
+    if (image->vk.external_handle_types)
+       flags |= RADEON_SURF_SHAREABLE;
+ 
+-   if (is_ahb_or_scanout ||
+-       (pdev->info.family == CHIP_ARIEL &&
+-        (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))))
+-      flags |= RADEON_SURF_DISABLE_DCC | (is_ahb_or_scanout ? RADEON_SURF_SCANOUT : 0);
++   /* Strictly restrict RADEON_SURF_DISABLE_DCC and RADEON_SURF_SCANOUT to external AHB or scanout images,
++    * preserving DCC compression and Fast Clear on internal color attachments and render targets for CHIP_ARIEL */
++   if (is_ahb_or_scanout)
++      flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT;
+ 
+    if (alignment && alignment->maximumRequestedAlignment) {
+       bool is_4k_capable;
+@@ -1369,9 +1369,6 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
+           image->vk.wsi_legacy_scanout) {
+          image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT;
+          image->planes[plane].surface.is_linear = true;
+-      } else if (pdev->info.family == CHIP_ARIEL &&
+-                 (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
+-         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
+       }
+ 
+       if (plane > 0 &&
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index 1554bbc..fae9781 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -433,16 +433,10 @@ radv_shader_choose_subgroup_size(const struct radv_compiler_info *compiler_info,
+        * to reduce wave scheduling overhead and register spilling.
+        */
+       if (compiler_info->key.family == CHIP_ARIEL && nir->info.stage == MESA_SHADER_COMPUTE) {
+-         const bool heavy_compute = (local_size >= 64 &&
+-                                     (nir->info.shared_size >= 4096 ||
+-                                      nir->info.num_ubos + nir->info.num_ssbos >= 4 ||
+-                                      local_size >= 256));
+-         if (heavy_compute && !nir->info.uses_wide_subgroup_intrinsics && !nir->info.cs.has_cooperative_matrix) {
+-            wave_size = 64;
+-         } else if (local_size <= 32) {
++         wave_size = aco_compiler_ariel_select_wave_size(local_size, nir->info.shared_size,
++                                                         nir->info.num_ubos, nir->info.num_ssbos);
++         if (nir->info.uses_wide_subgroup_intrinsics || nir->info.cs.has_cooperative_matrix) {
+             wave_size = 32;
+-         } else {
+-            wave_size = 32; /* Wave32 default for Ariel */
+          }
+       } else {
+          /* Use wave32 for small workgroups. */
+diff --git a/src/util/disk_cache.c b/src/util/disk_cache.c
+index 50265d4..f3e0fa8 100644
+--- a/src/util/disk_cache.c
++++ b/src/util/disk_cache.c
+@@ -225,12 +225,15 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
+    uint64_t max_size = 0;
+    const char *max_size_str;
+ 
+-#if defined(ANDROID) || defined(__ANDROID__)
++#if defined(ANDROID) || defined(__ANDROID__) || DETECT_OS_ANDROID
+    if (!os_get_option_secure("XDG_CACHE_HOME") && !os_get_option("MESA_SHADER_CACHE_DIR") && !os_get_option("MESA_GLSL_CACHE_DIR")) {
+       FILE *f = fopen("/proc/self/cmdline", "r");
+       if (f) {
+          char pkg[256] = {0};
+-         if (fgets(pkg, sizeof(pkg), f)) {
++         size_t n = fread(pkg, 1, sizeof(pkg) - 1, f);
++         fclose(f);
++         if (n > 0) {
++            pkg[n] = '\0';
+             char *colon = strchr(pkg, ':');
+             if (colon)
+                *colon = '\0';
+@@ -241,7 +244,6 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
+                disk_cache_set_default_dir(app_cache);
+             }
+          }
+-         fclose(f);
+       }
+    }
+ #endif

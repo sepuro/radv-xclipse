@@ -225,12 +225,15 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    uint64_t max_size = 0;
    const char *max_size_str;
 
-#if defined(ANDROID) || defined(__ANDROID__)
+#if defined(ANDROID) || defined(__ANDROID__) || DETECT_OS_ANDROID
    if (!os_get_option_secure("XDG_CACHE_HOME") && !os_get_option("MESA_SHADER_CACHE_DIR") && !os_get_option("MESA_GLSL_CACHE_DIR")) {
       FILE *f = fopen("/proc/self/cmdline", "r");
       if (f) {
          char pkg[256] = {0};
-         if (fgets(pkg, sizeof(pkg), f)) {
+         size_t n = fread(pkg, 1, sizeof(pkg) - 1, f);
+         fclose(f);
+         if (n > 0) {
+            pkg[n] = '\0';
             char *colon = strchr(pkg, ':');
             if (colon)
                *colon = '\0';
@@ -241,7 +244,6 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
                disk_cache_set_default_dir(app_cache);
             }
          }
-         fclose(f);
       }
    }
 #endif

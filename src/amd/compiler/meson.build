@@ -73,6 +73,7 @@ libaco_files = files(
   'aco_repair_ssa.cpp',
   'aco_scheduler.cpp',
   'aco_scheduler_ilp.cpp',
+  'aco_shader_info.c',
   'aco_spill.cpp',
   'aco_spill_preserved.cpp',
   'aco_ssa_elimination.cpp',

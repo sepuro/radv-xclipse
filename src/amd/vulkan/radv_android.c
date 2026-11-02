@@ -284,16 +284,46 @@ radv_QueueSignalReleaseImageANDROID(VkQueue queue_h, uint32_t waitSemaphoreCount
    vk_xclipse_perf_present();
    u_xclipse_prof_frame();
 
-   return vk_common_QueueSignalReleaseImageANDROID(queue_h, waitSemaphoreCount, pWaitSemaphores,
-                                                   image_h, pNativeFenceFd);
+   int local_fence_fd = -1;
+   int *fence_fd_ptr = pNativeFenceFd ? pNativeFenceFd : &local_fence_fd;
+
+   VkResult result = vk_common_QueueSignalReleaseImageANDROID(queue_h, waitSemaphoreCount, pWaitSemaphores,
+                                                             image_h, fence_fd_ptr);
+
+   if (!pNativeFenceFd && local_fence_fd >= 0) {
+      close(local_fence_fd);
+   }
+
+   return result;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_AcquireImageANDROID(VkDevice device, VkImage image, int nativeFenceFd,
                          VkSemaphore semaphore, VkFence fence)
 {
+   /* Ensure proper ownership handover of the native fence descriptor.
+    * vk_common_AcquireImageANDROID handles closing the fd on errors or when unused. */
    return vk_common_AcquireImageANDROID(device, image, nativeFenceFd, semaphore, fence);
 }
+
+/* Ensure HMI symbol is exported publicly and preserved for AdrenoTools and custom ICD loaders */
+#if DETECT_OS_ANDROID
+#include <hardware/hardware.h>
+#include <hardware/hwvulkan.h>
+
+extern struct hwvulkan_module_t HAL_MODULE_INFO_SYM;
+
+PUBLIC const struct hwvulkan_module_t *radv_get_hmi_module(void);
+
+PUBLIC const struct hwvulkan_module_t *radv_get_hmi_module(void)
+{
+   return &HAL_MODULE_INFO_SYM;
+}
+
+#if defined(__GNUC__)
+extern struct hwvulkan_module_t HMI __attribute__((visibility("default")));
+#endif
+#endif
 
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetSwapchainGrallocUsageANDROID(VkDevice device, VkFormat format,
