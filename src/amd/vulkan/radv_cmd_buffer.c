@@ -8472,7 +8472,7 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 
       flush_bits |= AC_BARRIER_INV_VMEM;
       if (flush_L2_metadata)
          flush_bits |= AC_BARRIER_INV_L2_METADATA;
-      if (!image_is_coherent || (pdev->info.family == CHIP_ARIEL && (dst_flags & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT))))
+      if (!image_is_coherent || (pdev->info.family == CHIP_ARIEL && (dst_flags & VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)))
          flush_bits |= AC_BARRIER_INV_L2;
    }
 
@@ -17204,14 +17204,10 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
                                                      &barrier->subresourceRange, barrier->pNext);
 
          if (pdev->info.family == CHIP_ARIEL) {
-            bool is_texture_read = (barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT |
-                                                              VK_ACCESS_2_SHADER_READ_BIT |
-                                                              VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT)) ||
-                                   barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ||
-                                   barrier->newLayout == VK_IMAGE_LAYOUT_GENERAL ||
-                                   barrier->newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ||
-                                   barrier->newLayout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR;
-            if (is_texture_read || barrier->oldLayout != barrier->newLayout) {
+            if (((barrier->srcAccessMask & (VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)) ||
+                 barrier->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) &&
+                ((barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT)) ||
+                 barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)) {
                dst_flush_bits |= AC_BARRIER_INV_VMEM | AC_BARRIER_INV_L2;
             }
          }
