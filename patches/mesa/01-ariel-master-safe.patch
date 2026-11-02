@@ -1,5 +1,5 @@
 diff --git a/src/amd/compiler/aco_scheduler.cpp b/src/amd/compiler/aco_scheduler.cpp
-index ffde2e4..d4ee525 100644
+index ffde2e4..65af8b2 100644
 --- a/src/amd/compiler/aco_scheduler.cpp
 +++ b/src/amd/compiler/aco_scheduler.cpp
 @@ -1445,8 +1445,11 @@ schedule_program(Program* program)
@@ -10,7 +10,7 @@ index ffde2e4..d4ee525 100644
 -      ctx.mv.max_registers.vgpr = std::min<uint16_t>(ctx.mv.max_registers.vgpr, 36);
 +      /* Cap target VGPR limit in the scheduler to prevent wave spill and maintain high occupancy */
 +      bool is_shadow = (program->info.hw_stage == AC_HW_NEXT_GEN_GEOMETRY_SHADER) ||
-+                       (program->info.hw_stage == AC_HW_PIXEL_SHADER && program->info.ps.spi_shader_col_format == 0);
++                       (program->info.hw_stage == AC_HW_PIXEL_SHADER && program->info.ps.num_inputs <= 1);
 +      ctx.mv.max_registers.vgpr = aco_compiler_ariel_tune_vgpr_limit(
 +         program->info.hw_stage, is_shadow, ctx.mv.max_registers.vgpr);
     }
