@@ -76,9 +76,11 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    /* The Xclipse 530 (CHIP_TITAN) needs the export encoding too: without the VM bit the DB never
     * learns which pixels a shader discarded, and they write depth (cutout grass hiding the water
     * behind it). The other three are the 920's alone; the 530 runs geometry and textureGrad fine
-    * without them. */
+    * without them.
+    * Note: CHIP_ARIEL (Xclipse 540 / MGFX2) is pure GFX11 (RDNA 3) export backend, so it must
+    * NEVER use gfx10_export_encoding; doing so corrupts export opcode bits and drops all pixels. */
    program->gfx10_export_encoding =
-      xclipse_920 || (options->gfx_level >= GFX11 && (options->family == CHIP_TITAN || options->family == CHIP_ARIEL));
+      xclipse_920 || (options->gfx_level >= GFX11 && options->family == CHIP_TITAN);
    program->gfx10_4_fmask = xclipse_920;
    program->gfx10_sendmsg = xclipse_920;
    program->gfx10_nsa = xclipse_920;

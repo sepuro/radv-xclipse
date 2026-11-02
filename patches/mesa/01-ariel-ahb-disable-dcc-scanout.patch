@@ -1,0 +1,80 @@
+diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
+index 42ad770..d19619f 100644
+--- a/src/amd/vulkan/radv_image.c
++++ b/src/amd/vulkan/radv_image.c
+@@ -42,6 +42,11 @@ radv_choose_tiling(struct radv_device *device, const struct radv_image *image, V
+ {
+    const struct radv_physical_device *pdev = radv_device_physical(device);
+ 
++   if ((image->vk.external_handle_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) ||
++       image->vk.wsi_legacy_scanout) {
++      return RADEON_SURF_MODE_LINEAR_ALIGNED;
++   }
++
+    if (image->vk.tiling == VK_IMAGE_TILING_LINEAR) {
+       assert(image->vk.samples <= 1);
+       return RADEON_SURF_MODE_LINEAR_ALIGNED;
+@@ -284,6 +289,11 @@ radv_use_dcc_for_image_early(struct radv_device *device, struct radv_image *imag
+       return dcc_no("disabled");
+    }
+ 
++   if ((image->vk.external_handle_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) ||
++       image->vk.wsi_legacy_scanout) {
++      return dcc_no("ahb_or_scanout");
++   }
++
+    if (image->vk.external_handle_types && image->vk.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+       return dcc_no("external");
+ 
+@@ -585,6 +595,12 @@ radv_patch_image_from_extra_info(struct radv_device *device, struct radv_image *
+          radv_patch_surface_from_metadata(device, &image->planes[plane].surface, create_info->bo_metadata);
+       }
+ 
++      if ((image->vk.external_handle_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) ||
++          image->vk.wsi_legacy_scanout) {
++         image->planes[plane].surface.flags |= RADEON_SURF_SCANOUT | RADEON_SURF_DISABLE_DCC;
++         image->planes[plane].surface.is_linear = true;
++      }
++
+       if (radv_surface_has_scanout(device, create_info)) {
+          image->planes[plane].surface.flags |= RADEON_SURF_SCANOUT;
+          if (RADV_DEBUG(instance, NO_DISPLAY_DCC))
+@@ -632,6 +648,14 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
+    is_depth = util_format_has_depth(desc);
+    is_stencil = util_format_has_stencil(desc);
+ 
++   const bool is_ahb_or_scanout =
++      (image->vk.external_handle_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) ||
++      image->vk.wsi_legacy_scanout;
++
++   if (is_ahb_or_scanout) {
++      array_mode = RADEON_SURF_MODE_LINEAR_ALIGNED;
++   }
++
+    flags = RADEON_SURF_SET(array_mode, MODE);
+ 
+    switch (image->vk.image_type) {
+@@ -743,6 +767,9 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
+    if (image->vk.external_handle_types)
+       flags |= RADEON_SURF_SHAREABLE;
+ 
++   if (is_ahb_or_scanout)
++      flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT;
++
+    if (alignment && alignment->maximumRequestedAlignment) {
+       bool is_4k_capable;
+ 
+@@ -1328,8 +1355,11 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
+       info.width = vk_format_get_plane_width(image->vk.format, plane, info.width);
+       info.height = vk_format_get_plane_height(image->vk.format, plane, info.height);
+ 
+-      if (create_info.no_metadata_planes || (pdev->info.gfx_level < GFX12 && plane_count > 1)) {
+-         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE;
++      if (create_info.no_metadata_planes || (pdev->info.gfx_level < GFX12 && plane_count > 1) ||
++          (image->vk.external_handle_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) ||
++          image->vk.wsi_legacy_scanout) {
++         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT;
++         image->planes[plane].surface.is_linear = true;
+       }
+ 
+       if (plane > 0 &&

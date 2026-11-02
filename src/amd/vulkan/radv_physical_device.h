@@ -302,6 +302,7 @@ bool radv_is_dcc_disabled(const struct radv_physical_device *pdev);
 
 VkResult create_drm_physical_device(struct vk_instance *vk_instance, struct _drmDevice *device,
                                     struct vk_physical_device **out);
+VkResult radv_enumerate_physical_devices(struct vk_instance *vk_instance);
 
 void radv_physical_device_destroy(struct vk_physical_device *vk_pdev);
 

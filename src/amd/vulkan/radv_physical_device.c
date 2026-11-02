@@ -378,7 +378,8 @@ radv_is_dcc_disabled(const struct radv_physical_device *pdev)
     * Souls, which turned out to be occlusion queries; the vendor driver compresses its render
     * targets on the 530 (DCC_ENABLE, 128B independent blocks), which is most of why the same draws
     * and clears cost it a half to a quarter of the GPU time. */
-   return RADV_DEBUG(instance, NO_DCC) || (pdev->info.gfx11_shader_core && !pdev->xclipse_dcc) ||
+   return RADV_DEBUG(instance, NO_DCC) ||
+          ((pdev->info.gfx11_shader_core || pdev->info.family == CHIP_ARIEL) && !pdev->xclipse_dcc) ||
           pdev->drirc.debug.disable_dcc;
 }
 
@@ -3112,8 +3113,15 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       pdev->emulate_bc && !radv_xclipse_flag_off("RADV_XCLIPSE_BC5_ALIAS", "radv_xclipse_bc5_alias");
    pdev->xclipse_bc7_alias =
       pdev->emulate_bc && !radv_xclipse_flag_off("RADV_XCLIPSE_BC7_ALIAS", "radv_xclipse_bc7_alias");
-   pdev->xclipse_dcc = (pdev->info.gfx11_shader_core || pdev->info.family == CHIP_ARIEL) &&
-                       !radv_xclipse_flag_off("RADV_XCLIPSE_DCC", "radv_xclipse_dcc");
+   /* Xclipse: DCC on colour targets. On CHIP_ARIEL (Xclipse 540 / Exynos 1580), DCC must default to
+    * OFF to prevent black screen on display scanout / swapchain and untracked render targets,
+    * unless explicitly opted in with RADV_XCLIPSE_DCC=1 or debug.radv_xclipse_dcc 1. */
+   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
+      pdev->xclipse_dcc = radv_xclipse_flag("RADV_XCLIPSE_DCC", "radv_xclipse_dcc");
+   } else {
+      pdev->xclipse_dcc = pdev->info.gfx11_shader_core &&
+                          !radv_xclipse_flag_off("RADV_XCLIPSE_DCC", "radv_xclipse_dcc");
+   }
    pdev->xclipse_dcc_small =
       pdev->xclipse_dcc && !radv_xclipse_flag_off("RADV_XCLIPSE_DCC_SMALL", "radv_xclipse_dcc_small");
    pdev->xclipse_llc = pdev->info.xclipse_model == AC_XCLIPSE_960 &&
@@ -3206,6 +3214,10 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
        * Keep NGG culling disabled by default unless RADV_PERFTEST=nggc is explicitly set. */
       pdev->use_ngg_culling = pdev->use_ngg && (instance->perftest_flags & RADV_PERFTEST_NGGC) &&
                               !(RADV_DEBUG(instance, NO_NGGC));
+
+      /* Force RADV_DEBUG_NO_HIZ by default on CHIP_ARIEL to prevent depth buffer corruption and black screen */
+      BITSET_SET(instance->debug_flags, RADV_DEBUG_NO_HIZ);
+      pdev->use_hiz = false;
    }
 
    pdev->emulate_ngg_gs_query_pipeline_stat = pdev->use_ngg && pdev->info.gfx_level < GFX11;
@@ -3368,6 +3380,60 @@ create_drm_physical_device(struct vk_instance *vk_instance, struct _drmDevice *d
 #else
    return VK_SUCCESS;
 #endif
+}
+
+VkResult
+radv_enumerate_physical_devices(struct vk_instance *vk_instance)
+{
+#ifndef _WIN32
+   struct radv_instance *instance = (struct radv_instance *)vk_instance;
+   drmDevicePtr devices[256];
+   int max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
+
+   if (max_devices > 0) {
+      for (int i = 0; i < max_devices; i++) {
+         struct vk_physical_device *pdevice = NULL;
+         VkResult r = instance->vk.physical_devices.try_create_for_drm(vk_instance, devices[i], &pdevice);
+         if (r == VK_SUCCESS && pdevice) {
+            list_addtail(&pdevice->link, &vk_instance->physical_devices.list);
+         }
+      }
+      drmFreeDevices(devices, max_devices);
+   }
+
+   /* SELinux fallback for Android:
+    * Android untrusted_app or emulators are frequently blocked by SELinux policy from listing /dev/dri
+    * (drmGetDevices2 returns <= 0), but direct open of /dev/dri/renderD128 is permitted.
+    * If no devices were found via drmGetDevices2, open /dev/dri/renderD128 directly.
+    */
+   if (list_is_empty(&vk_instance->physical_devices.list)) {
+      int fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC);
+      if (fd >= 0) {
+         drmDevicePtr dev_ptr = NULL;
+         if (drmGetDevice2(fd, 0, &dev_ptr) == 0 && dev_ptr) {
+            struct vk_physical_device *pdevice = NULL;
+            VkResult r = instance->vk.physical_devices.try_create_for_drm(vk_instance, dev_ptr, &pdevice);
+            if (r == VK_SUCCESS && pdevice) {
+               list_addtail(&pdevice->link, &vk_instance->physical_devices.list);
+            }
+            drmFreeDevice(&dev_ptr);
+         } else {
+            /* If sysfs is also restricted by SELinux, synthesize a platform drmDevice node */
+            drmDevice synth_dev = {0};
+            synth_dev.bustype = DRM_BUS_PLATFORM;
+            synth_dev.available_nodes = 1 << DRM_NODE_RENDER;
+            synth_dev.nodes[DRM_NODE_RENDER] = (char *)"/dev/dri/renderD128";
+            struct vk_physical_device *pdevice = NULL;
+            VkResult r = instance->vk.physical_devices.try_create_for_drm(vk_instance, &synth_dev, &pdevice);
+            if (r == VK_SUCCESS && pdevice) {
+               list_addtail(&pdevice->link, &vk_instance->physical_devices.list);
+            }
+         }
+         close(fd);
+      }
+   }
+#endif
+   return VK_SUCCESS;
 }
 
 static VkQueueFlags

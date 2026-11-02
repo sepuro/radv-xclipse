@@ -1,0 +1,49 @@
+diff --git a/src/amd/vulkan/radv_android.c b/src/amd/vulkan/radv_android.c
+index c521b40..1735291 100644
+--- a/src/amd/vulkan/radv_android.c
++++ b/src/amd/vulkan/radv_android.c
+@@ -229,7 +229,8 @@ radv_image_from_gralloc(VkDevice device_h, const VkImageCreateInfo *base_info,
+       updated_base_info.pNext = &mod_info;
+    } else {
+       if (ac_xclipse_log_level() >= 1)
+-         mesa_logi("[ANB] vk_android_get_anb_layout failed = %d (falling back to non-modifier path)", result);
++         mesa_logi("[ANB] vk_android_get_anb_layout failed = %d (falling back to non-modifier linear path)", result);
++      updated_base_info.tiling = VK_IMAGE_TILING_LINEAR;
+    }
+ 
+    result = radv_image_create(device_h,
+@@ -287,6 +288,34 @@ radv_QueueSignalReleaseImageANDROID(VkQueue queue_h, uint32_t waitSemaphoreCount
+                                                    image_h, pNativeFenceFd);
+ }
+ 
++VKAPI_ATTR VkResult VKAPI_CALL
++radv_AcquireImageANDROID(VkDevice device, VkImage image, int nativeFenceFd,
++                         VkSemaphore semaphore, VkFence fence)
++{
++   return vk_common_AcquireImageANDROID(device, image, nativeFenceFd, semaphore, fence);
++}
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radv_GetSwapchainGrallocUsageANDROID(VkDevice device, VkFormat format,
++                                     VkImageUsageFlags imageUsage,
++                                     int *grallocUsage)
++{
++   return vk_common_GetSwapchainGrallocUsageANDROID(device, format, imageUsage, grallocUsage);
++}
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radv_GetSwapchainGrallocUsage2ANDROID(VkDevice device, VkFormat format,
++                                      VkImageUsageFlags imageUsage,
++                                      VkSwapchainImageUsageFlagsANDROID swapchainImageUsage,
++                                      uint64_t *grallocConsumerUsage,
++                                      uint64_t *grallocProducerUsage)
++{
++   return vk_common_GetSwapchainGrallocUsage2ANDROID(device, format, imageUsage,
++                                                    swapchainImageUsage,
++                                                    grallocConsumerUsage,
++                                                    grallocProducerUsage);
++}
++
+ VkResult
+ radv_android_get_wsi_memory(VkDevice device_h, const VkBindImageMemoryInfo *bind_info, VkDeviceMemory *out_memory_h)
+ {

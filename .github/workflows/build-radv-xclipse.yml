@@ -120,7 +120,7 @@ jobs:
             "name": "Custom RADV Xclipse 540 (Mesa ${MESA_VER})",
             "description": "Mesa RADV custom Vulkan driver for Samsung Exynos 1580 (Xclipse 540 / CHIP_ARIEL)",
             "author": "Antigravity & purwowd",
-            "packageVersion": "1.0",
+            "packageVersion": "1.1",
             "vendor": "Mesa/RADV",
             "driverVersion": "Vulkan 1.3.275",
             "minApi": 34,
@@ -152,7 +152,11 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0-xclipse540
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) v1.0.0"
-          files: Custom_RADV_Xclipse540.zip
+          tag_name: v1.1.0-xclipse540
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) v1.1.0 - SurfaceFlinger & WSI Fix"
+          files: |
+            Custom_RADV_Xclipse540.zip
+            patches/mesa/01-ariel-ahb-disable-dcc-scanout.patch
+            patches/mesa/02-ariel-selinux-renderd128-and-nohiz.patch
+            patches/mesa/03-ariel-android-wsi-sync.patch
           generate_release_notes: true
