@@ -1,5 +1,17 @@
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 7a4f1b1..9148e4f 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -17204,6 +17204,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
+                                                      &barrier->subresourceRange, barrier->pNext);
+ 
+          if (pdev->info.family == CHIP_ARIEL) {
++            /* Invalidate vector cache (RADV_CMD_FLAG_INV_VCACHE) and L2 for texture sampling transitions */
+             if (((barrier->srcAccessMask & (VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)) ||
+                  barrier->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) &&
+                 ((barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT)) ||
 diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
-index ab10c1b..d488b86 100644
+index ab10c1b..0d8a054 100644
 --- a/src/amd/vulkan/radv_image.c
 +++ b/src/amd/vulkan/radv_image.c
 @@ -774,10 +774,11 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
@@ -15,15 +27,31 @@ index ab10c1b..d488b86 100644
        flags |= RADEON_SURF_DISABLE_DCC;
     }
  
-@@ -1372,7 +1373,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
-          image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED;
-          image->planes[plane].surface.is_linear = true;
-       } else if (pdev->info.family == CHIP_ARIEL &&
--                 (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
-+                 (image->vk.usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
-          image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
-       }
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index f94a483..21ce4e4 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -3211,7 +3211,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
+       pdev->use_ngg_culling = pdev->use_ngg && (instance->perftest_flags & RADV_PERFTEST_NGGC) &&
+                               !(RADV_DEBUG(instance, NO_NGGC));
  
+-      /* Force RADV_DEBUG_NO_HIZ by default on CHIP_ARIEL to prevent depth buffer corruption and black screen */
++      /* Force RADV_DEBUG_NO_HIZ by default on CHIP_ARIEL (Xclipse 540) to prevent depth buffer corruption and black screen */
+       BITSET_SET(instance->debug_flags, RADV_DEBUG_NO_HIZ);
+       pdev->use_hiz = false;
+    }
+@@ -3421,9 +3421,10 @@ radv_enumerate_physical_devices(struct vk_instance *vk_instance)
+    /* SELinux fallback for Android:
+     * Android untrusted_app or emulators are frequently blocked by SELinux policy from listing /dev/dri
+     * (drmGetDevices2 returns <= 0), but direct open of /dev/dri/renderD128 is permitted.
+-    * If no devices were found via drmGetDevices2, open /dev/dri/renderD128 directly.
++    * If no devices were found via drmGetDevices2, fallback to /dev/dri/renderD128 directly.
+     */
+    if (list_is_empty(&vk_instance->physical_devices.list)) {
++      /* Fallback to /dev/dri/renderD128 directly */
+       int fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC);
+       if (fd >= 0) {
+          drmDevicePtr dev_ptr = NULL;
 diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
 index fae9781..8666faa 100644
 --- a/src/amd/vulkan/radv_shader.c
