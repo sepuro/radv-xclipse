@@ -1,0 +1,3074 @@
+[
+  {
+    "index": 0,
+    "name": "vkGetInstanceProcAddr",
+    "func_va": "0x16705ac",
+    "string_va": "0xc2b554"
+  },
+  {
+    "index": 1,
+    "name": "vkCreateInstance",
+    "func_va": "0x16707f4",
+    "string_va": "0xc2b57e"
+  },
+  {
+    "index": 2,
+    "name": "vkEnumerateInstanceExtensionProperties",
+    "func_va": "0x1690bc8",
+    "string_va": "0xc2b58f"
+  },
+  {
+    "index": 3,
+    "name": "vkEnumerateInstanceLayerProperties",
+    "func_va": "0x1690f64",
+    "string_va": "0xc2b5b6"
+  },
+  {
+    "index": 4,
+    "name": "vkEnumerateInstanceVersion",
+    "func_va": "0x1690f70",
+    "string_va": "0xc2b5d9"
+  },
+  {
+    "index": 5,
+    "name": "vkGetDeviceProcAddr",
+    "func_va": "0x1690bb0",
+    "string_va": "0xc2b56a"
+  },
+  {
+    "index": 6,
+    "name": "vkAcquireNextImageKHR",
+    "func_va": "0x16794c0",
+    "string_va": "0xc2cec0"
+  },
+  {
+    "index": 7,
+    "name": "vkAllocateDescriptorSets",
+    "func_va": "0x1690ca0",
+    "string_va": "0xc2b792"
+  },
+  {
+    "index": 8,
+    "name": "vkAllocateMemory",
+    "func_va": "0x16794dc",
+    "string_va": "0xc2b7ab"
+  },
+  {
+    "index": 9,
+    "name": "vkBeginCommandBuffer",
+    "func_va": "0x1679660",
+    "string_va": "0xc2b7bc"
+  },
+  {
+    "index": 10,
+    "name": "vkBindBufferMemory",
+    "func_va": "0x1690cac",
+    "string_va": "0xc2b7d1"
+  },
+  {
+    "index": 11,
+    "name": "vkBindImageMemory",
+    "func_va": "0x16795a0",
+    "string_va": "0xc2b7e4"
+  },
+  {
+    "index": 12,
+    "name": "vkCmdBeginRenderPass",
+    "func_va": "0x16795b8",
+    "string_va": "0xc2b806"
+  },
+  {
+    "index": 13,
+    "name": "vkCmdBeginQuery",
+    "func_va": "0x16795b0",
+    "string_va": "0xc2b7f6"
+  },
+  {
+    "index": 14,
+    "name": "vkCmdBindDescriptorSets",
+    "func_va": "0x1679678",
+    "string_va": "0xc2b81b"
+  },
+  {
+    "index": 15,
+    "name": "vkCmdBindIndexBuffer",
+    "func_va": "0x16795a8",
+    "string_va": "0xc2b833"
+  },
+  {
+    "index": 16,
+    "name": "vkCmdBindPipeline",
+    "func_va": "0x167968c",
+    "string_va": "0xc2b848"
+  },
+  {
+    "index": 17,
+    "name": "vkCmdBindVertexBuffers",
+    "func_va": "0x16796e0",
+    "string_va": "0xc2b85a"
+  },
+  {
+    "index": 18,
+    "name": "vkCmdBlitImage",
+    "func_va": "0x1660a38",
+    "string_va": "0xc2b871"
+  },
+  {
+    "index": 19,
+    "name": "vkCmdClearAttachments",
+    "func_va": "0x1658b4c",
+    "string_va": "0xc2b880"
+  },
+  {
+    "index": 20,
+    "name": "vkCmdClearColorImage",
+    "func_va": "0x1660a58",
+    "string_va": "0xc2b896"
+  },
+  {
+    "index": 21,
+    "name": "vkCmdClearDepthStencilImage",
+    "func_va": "0x1609f9c",
+    "string_va": "0xc2b8ab"
+  },
+  {
+    "index": 22,
+    "name": "vkCmdCopyBuffer",
+    "func_va": "0x162b538",
+    "string_va": "0xc2b8c7"
+  },
+  {
+    "index": 23,
+    "name": "vkCmdCopyBufferToImage",
+    "func_va": "0x168a778",
+    "string_va": "0xc2b8d7"
+  },
+  {
+    "index": 24,
+    "name": "vkCmdCopyImage",
+    "func_va": "0x160a9f0",
+    "string_va": "0xc2b8ee"
+  },
+  {
+    "index": 25,
+    "name": "vkCmdCopyImageToBuffer",
+    "func_va": "0x160abd8",
+    "string_va": "0xc2b8fd"
+  },
+  {
+    "index": 26,
+    "name": "vkCmdCopyQueryPoolResults",
+    "func_va": "0x1609fbc",
+    "string_va": "0xc2b914"
+  },
+  {
+    "index": 27,
+    "name": "vkCmdDraw",
+    "func_va": "0x1609fdc",
+    "string_va": "0xc2b952"
+  },
+  {
+    "index": 28,
+    "name": "vkCmdDrawIndexed",
+    "func_va": "0x1609fb4",
+    "string_va": "0xc2b95c"
+  },
+  {
+    "index": 29,
+    "name": "vkCmdDrawIndexedIndirect",
+    "func_va": "0x160a0cc",
+    "string_va": "0xc2b96d"
+  },
+  {
+    "index": 30,
+    "name": "vkCmdDrawIndirect",
+    "func_va": "0x160a5c8",
+    "string_va": "0xc2b986"
+  },
+  {
+    "index": 31,
+    "name": "vkCmdDrawIndexedIndirectCount",
+    "func_va": "0x160a7a4",
+    "string_va": "0xc2c430"
+  },
+  {
+    "index": 32,
+    "name": "vkCmdDrawIndirectCount",
+    "func_va": "0x160a78c",
+    "string_va": "0xc2c44e"
+  },
+  {
+    "index": 33,
+    "name": "vkCmdDrawIndexedIndirectCountKHR",
+    "func_va": "0x160a794",
+    "string_va": "0xc2cfca"
+  },
+  {
+    "index": 34,
+    "name": "vkCmdDrawIndirectCountKHR",
+    "func_va": "0x160a5b8",
+    "string_va": "0xc2cfb0"
+  },
+  {
+    "index": 35,
+    "name": "vkCmdDrawIndexedIndirectCountAMD",
+    "func_va": "0x160a5d0",
+    "string_va": "0xc2cf75"
+  },
+  {
+    "index": 36,
+    "name": "vkCmdDrawIndirectCountAMD",
+    "func_va": "0x160a5c0",
+    "string_va": "0xc2cf96"
+  },
+  {
+    "index": 37,
+    "name": "vkCreateRenderPass2",
+    "func_va": "0x160a5d8",
+    "string_va": "0xc2c4a1"
+  },
+  {
+    "index": 38,
+    "name": "vkCmdBeginRenderPass2",
+    "func_va": "0x160aa30",
+    "string_va": "0xc2c465"
+  },
+  {
+    "index": 39,
+    "name": "vkCmdNextSubpass2",
+    "func_va": "0x160a514",
+    "string_va": "0xc2c48f"
+  },
+  {
+    "index": 40,
+    "name": "vkCmdEndRenderPass2",
+    "func_va": "0x160a51c",
+    "string_va": "0xc2c47b"
+  },
+  {
+    "index": 41,
+    "name": "vkCreateRenderPass2KHR",
+    "func_va": "0x160a0dc",
+    "string_va": "0xc2d622"
+  },
+  {
+    "index": 42,
+    "name": "vkCmdBeginRenderPass2KHR",
+    "func_va": "0x160a0fc",
+    "string_va": "0xc2d639"
+  },
+  {
+    "index": 43,
+    "name": "vkCmdNextSubpass2KHR",
+    "func_va": "0x160a1f0",
+    "string_va": "0xc2d652"
+  },
+  {
+    "index": 44,
+    "name": "vkCmdEndRenderPass2KHR",
+    "func_va": "0x160a120",
+    "string_va": "0xc2d667"
+  },
+  {
+    "index": 45,
+    "name": "vkCmdDispatch",
+    "func_va": "0x160a9fc",
+    "string_va": "0xc2b92e"
+  },
+  {
+    "index": 46,
+    "name": "vkCmdDispatchIndirect",
+    "func_va": "0x160ac00",
+    "string_va": "0xc2b93c"
+  },
+  {
+    "index": 47,
+    "name": "vkCmdEndRenderPass",
+    "func_va": "0x160ac10",
+    "string_va": "0xc2b9a6"
+  },
+  {
+    "index": 48,
+    "name": "vkCmdEndQuery",
+    "func_va": "0x160a6ac",
+    "string_va": "0xc2b998"
+  },
+  {
+    "index": 49,
+    "name": "vkCmdExecuteCommands",
+    "func_va": "0x160abec",
+    "string_va": "0xc2b9b9"
+  },
+  {
+    "index": 50,
+    "name": "vkCmdFillBuffer",
+    "func_va": "0x160a9c0",
+    "string_va": "0xc2b9ce"
+  },
+  {
+    "index": 51,
+    "name": "vkCmdNextSubpass",
+    "func_va": "0x160aa38",
+    "string_va": "0xc2b9de"
+  },
+  {
+    "index": 52,
+    "name": "vkCmdPipelineBarrier",
+    "func_va": "0x160a898",
+    "string_va": "0xc2b9ef"
+  },
+  {
+    "index": 53,
+    "name": "vkCmdPushConstants",
+    "func_va": "0x160aa1c",
+    "string_va": "0xc2ba04"
+  },
+  {
+    "index": 54,
+    "name": "vkCmdResetEvent",
+    "func_va": "0x160a7ac",
+    "string_va": "0xc2ba17"
+  },
+  {
+    "index": 55,
+    "name": "vkCmdResetQueryPool",
+    "func_va": "0x160aeac",
+    "string_va": "0xc2ba27"
+  },
+  {
+    "index": 56,
+    "name": "vkCmdResolveImage",
+    "func_va": "0x160ae40",
+    "string_va": "0xc2ba3b"
+  },
+  {
+    "index": 57,
+    "name": "vkCmdSetBlendConstants",
+    "func_va": "0x160af18",
+    "string_va": "0xc2ba4d"
+  },
+  {
+    "index": 58,
+    "name": "vkCmdSetDepthBias",
+    "func_va": "0x160a7b4",
+    "string_va": "0xc2ba64"
+  },
+  {
+    "index": 59,
+    "name": "vkCmdSetDepthBounds",
+    "func_va": "0x160adb8",
+    "string_va": "0xc2ba76"
+  },
+  {
+    "index": 60,
+    "name": "vkCmdSetEvent",
+    "func_va": "0x160ac78",
+    "string_va": "0xc2ba8a"
+  },
+  {
+    "index": 61,
+    "name": "vkCmdSetLineWidth",
+    "func_va": "0x160af80",
+    "string_va": "0xc2ba98"
+  },
+  {
+    "index": 62,
+    "name": "vkCmdSetScissor",
+    "func_va": "0x160afe8",
+    "string_va": "0xc2baaa"
+  },
+  {
+    "index": 63,
+    "name": "vkCmdSetStencilCompareMask",
+    "func_va": "0x160afb4",
+    "string_va": "0xc2baba"
+  },
+  {
+    "index": 64,
+    "name": "vkCmdSetStencilReference",
+    "func_va": "0x160ac70",
+    "string_va": "0xc2bad5"
+  },
+  {
+    "index": 65,
+    "name": "vkCmdSetStencilWriteMask",
+    "func_va": "0x160a5e0",
+    "string_va": "0xc2baee"
+  },
+  {
+    "index": 66,
+    "name": "vkCmdSetViewport",
+    "func_va": "0x160a998",
+    "string_va": "0xc2bb07"
+  },
+  {
+    "index": 67,
+    "name": "vkCmdUpdateBuffer",
+    "func_va": "0x160aa24",
+    "string_va": "0xc2bb18"
+  },
+  {
+    "index": 68,
+    "name": "vkCmdWaitEvents",
+    "func_va": "0x166042c",
+    "string_va": "0xc2bb2a"
+  },
+  {
+    "index": 69,
+    "name": "vkCmdWriteTimestamp",
+    "func_va": "0x1660470",
+    "string_va": "0xc2bb3a"
+  },
+  {
+    "index": 70,
+    "name": "vkCreateBuffer",
+    "func_va": "0x1660a40",
+    "string_va": "0xc2bb4e"
+  },
+  {
+    "index": 71,
+    "name": "vkCreateBufferView",
+    "func_va": "0x1660848",
+    "string_va": "0xc2bb5d"
+  },
+  {
+    "index": 72,
+    "name": "vkAllocateCommandBuffers",
+    "func_va": "0x1658af8",
+    "string_va": "0xc2b779"
+  },
+  {
+    "index": 73,
+    "name": "vkCreateCommandPool",
+    "func_va": "0x16602fc",
+    "string_va": "0xc2bb70"
+  },
+  {
+    "index": 74,
+    "name": "vkCreateComputePipelines",
+    "func_va": "0x1660230",
+    "string_va": "0xc2bb84"
+  },
+  {
+    "index": 75,
+    "name": "vkCreateDescriptorPool",
+    "func_va": "0x1660094",
+    "string_va": "0xc2bb9d"
+  },
+  {
+    "index": 76,
+    "name": "vkCreateDescriptorSetLayout",
+    "func_va": "0x166032c",
+    "string_va": "0xc2bbb4"
+  },
+  {
+    "index": 77,
+    "name": "vkCreateDevice",
+    "func_va": "0x1660740",
+    "string_va": "0xc2b5f4"
+  },
+  {
+    "index": 78,
+    "name": "vkCreateEvent",
+    "func_va": "0x16604b4",
+    "string_va": "0xc2bbd0"
+  },
+  {
+    "index": 79,
+    "name": "vkCreateFence",
+    "func_va": "0x16606f8",
+    "string_va": "0xc2bbde"
+  },
+  {
+    "index": 80,
+    "name": "vkCreateFramebuffer",
+    "func_va": "0x1660728",
+    "string_va": "0xc2bbec"
+  },
+  {
+    "index": 81,
+    "name": "vkCreateGraphicsPipelines",
+    "func_va": "0x1660314",
+    "string_va": "0xc2bc00"
+  },
+  {
+    "index": 82,
+    "name": "vkCreateImage",
+    "func_va": "0x1660248",
+    "string_va": "0xc2bc1a"
+  },
+  {
+    "index": 83,
+    "name": "vkCreateImageView",
+    "func_va": "0x16603fc",
+    "string_va": "0xc2bc28"
+  },
+  {
+    "index": 84,
+    "name": "vkCreatePipelineLayout",
+    "func_va": "0x1660940",
+    "string_va": "0xc2bc50"
+  },
+  {
+    "index": 85,
+    "name": "vkCreatePipelineCache",
+    "func_va": "0x16601f0",
+    "string_va": "0xc2bc3a"
+  },
+  {
+    "index": 86,
+    "name": "vkCreateQueryPool",
+    "func_va": "0x1660710",
+    "string_va": "0xc2bc67"
+  },
+  {
+    "index": 87,
+    "name": "vkCreateRenderPass",
+    "func_va": "0x162b358",
+    "string_va": "0xc2bc79"
+  },
+  {
+    "index": 88,
+    "name": "vkCreateSampler",
+    "func_va": "0x162b95c",
+    "string_va": "0xc2bc8c"
+  },
+  {
+    "index": 89,
+    "name": "vkCreateSemaphore",
+    "func_va": "0x164bc0c",
+    "string_va": "0xc2bc9c"
+  },
+  {
+    "index": 90,
+    "name": "vkCreateShaderModule",
+    "func_va": "0x1658b1c",
+    "string_va": "0xc2bcae"
+  },
+  {
+    "index": 91,
+    "name": "vkCreateSwapchainKHR",
+    "func_va": "0x1657798",
+    "string_va": "0xc2ced6"
+  },
+  {
+    "index": 92,
+    "name": "vkDestroySurfaceKHR",
+    "func_va": "0x1660208",
+    "string_va": "0xc2ce36"
+  },
+  {
+    "index": 93,
+    "name": "vkReleaseDisplayEXT",
+    "func_va": "0x1670df4",
+    "string_va": "0xc2d576"
+  },
+  {
+    "index": 94,
+    "name": "vkDestroyBuffer",
+    "func_va": "0x1671470",
+    "string_va": "0xc2bcc3"
+  },
+  {
+    "index": 95,
+    "name": "vkDestroyBufferView",
+    "func_va": "0x1671f44",
+    "string_va": "0xc2bcd3"
+  },
+  {
+    "index": 96,
+    "name": "vkFreeCommandBuffers",
+    "func_va": "0x168a748",
+    "string_va": "0xc2be76"
+  },
+  {
+    "index": 97,
+    "name": "vkDestroyCommandPool",
+    "func_va": "0x168e904",
+    "string_va": "0xc2bce7"
+  },
+  {
+    "index": 98,
+    "name": "vkDestroyDescriptorPool",
+    "func_va": "0x1694cbc",
+    "string_va": "0xc2bcfc"
+  },
+  {
+    "index": 99,
+    "name": "vkDestroyDescriptorSetLayout",
+    "func_va": "0x1698c8c",
+    "string_va": "0xc2bd14"
+  },
+  {
+    "index": 100,
+    "name": "vkDestroyDevice",
+    "func_va": "0x169869c",
+    "string_va": "0xc2bd31"
+  },
+  {
+    "index": 101,
+    "name": "vkDestroyEvent",
+    "func_va": "0x169b738",
+    "string_va": "0xc2bd41"
+  },
+  {
+    "index": 102,
+    "name": "vkDestroyFence",
+    "func_va": "0x16a2988",
+    "string_va": "0xc2bd50"
+  },
+  {
+    "index": 103,
+    "name": "vkDestroyFramebuffer",
+    "func_va": "0x16a3b7c",
+    "string_va": "0xc2bd5f"
+  },
+  {
+    "index": 104,
+    "name": "vkDestroyImage",
+    "func_va": "0x16a4a40",
+    "string_va": "0xc2bd74"
+  },
+  {
+    "index": 105,
+    "name": "vkDestroyImageView",
+    "func_va": "0x16a4ecc",
+    "string_va": "0xc2bd83"
+  },
+  {
+    "index": 106,
+    "name": "vkDestroyInstance",
+    "func_va": "0x1660228",
+    "string_va": "0xc2b603"
+  },
+  {
+    "index": 107,
+    "name": "vkDestroyPipeline",
+    "func_va": "0x1609fa4",
+    "string_va": "0xc2bd96"
+  },
+  {
+    "index": 108,
+    "name": "vkDestroyPipelineCache",
+    "func_va": "0x16932f8",
+    "string_va": "0xc2bda8"
+  },
+  {
+    "index": 109,
+    "name": "vkDestroyPipelineLayout",
+    "func_va": "0x160ac18",
+    "string_va": "0xc2bdbf"
+  },
+  {
+    "index": 110,
+    "name": "vkDestroyQueryPool",
+    "func_va": "0x1658b04",
+    "string_va": "0xc2bdd7"
+  },
+  {
+    "index": 111,
+    "name": "vkDestroyRenderPass",
+    "func_va": "0x1693124",
+    "string_va": "0xc2bdea"
+  },
+  {
+    "index": 112,
+    "name": "vkDestroySampler",
+    "func_va": "0x162b64c",
+    "string_va": "0xc2bdfe"
+  },
+  {
+    "index": 113,
+    "name": "vkDestroySemaphore",
+    "func_va": "0x1693308",
+    "string_va": "0xc2be0f"
+  },
+  {
+    "index": 114,
+    "name": "vkDestroyShaderModule",
+    "func_va": "0x16600bc",
+    "string_va": "0xc2be22"
+  },
+  {
+    "index": 115,
+    "name": "vkDestroySwapchainKHR",
+    "func_va": "0x1670ed8",
+    "string_va": "0xc2ceeb"
+  },
+  {
+    "index": 116,
+    "name": "vkDeviceWaitIdle",
+    "func_va": "0x1671348",
+    "string_va": "0xc2be38"
+  },
+  {
+    "index": 117,
+    "name": "vkEndCommandBuffer",
+    "func_va": "0x168a790",
+    "string_va": "0xc2be49"
+  },
+  {
+    "index": 118,
+    "name": "vkEnumeratePhysicalDevices",
+    "func_va": "0x168a7a4",
+    "string_va": "0xc2b65b"
+  },
+  {
+    "index": 119,
+    "name": "vkFlushMappedMemoryRanges",
+    "func_va": "0x168a7b8",
+    "string_va": "0xc2be5c"
+  },
+  {
+    "index": 120,
+    "name": "vkFreeDescriptorSets",
+    "func_va": "0x1698d9c",
+    "string_va": "0xc2be8b"
+  },
+  {
+    "index": 121,
+    "name": "vkFreeMemory",
+    "func_va": "0x169b720",
+    "string_va": "0xc2bea0"
+  },
+  {
+    "index": 122,
+    "name": "vkGetBufferMemoryRequirements",
+    "func_va": "0x1660a20",
+    "string_va": "0xc2bead"
+  },
+  {
+    "index": 123,
+    "name": "vkGetDeviceMemoryCommitment",
+    "func_va": "0x1693300",
+    "string_va": "0xc2becb"
+  },
+  {
+    "index": 124,
+    "name": "vkGetDeviceQueue",
+    "func_va": "0x1693154",
+    "string_va": "0xc2bee7"
+  },
+  {
+    "index": 125,
+    "name": "vkGetEventStatus",
+    "func_va": "0x1698fb0",
+    "string_va": "0xc2bef8"
+  },
+  {
+    "index": 126,
+    "name": "vkGetFenceStatus",
+    "func_va": "0x169f4b0",
+    "string_va": "0xc2bf09"
+  },
+  {
+    "index": 127,
+    "name": "vkEnumerateDeviceExtensionProperties",
+    "func_va": "0x169dd20",
+    "string_va": "0xc2b615"
+  },
+  {
+    "index": 128,
+    "name": "vkEnumerateDeviceLayerProperties",
+    "func_va": "0x169f4a8",
+    "string_va": "0xc2b63a"
+  },
+  {
+    "index": 129,
+    "name": "vkSetHdrMetadataEXT",
+    "func_va": "0x1609fac",
+    "string_va": "0xc2d8b5"
+  },
+  {
+    "index": 130,
+    "name": "vkGetImageMemoryRequirements",
+    "func_va": "0x164bc3c",
+    "string_va": "0xc2bf1a"
+  },
+  {
+    "index": 131,
+    "name": "vkGetImageSparseMemoryRequirements",
+    "func_va": "0x1658b10",
+    "string_va": "0xc2bf37"
+  },
+  {
+    "index": 132,
+    "name": "vkGetImageSubresourceLayout",
+    "func_va": "0x1670ff8",
+    "string_va": "0xc2bf5a"
+  },
+  {
+    "index": 133,
+    "name": "vkGetPhysicalDeviceFeatures",
+    "func_va": "0x16600b4",
+    "string_va": "0xc2b676"
+  },
+  {
+    "index": 134,
+    "name": "vkGetPhysicalDeviceFormatProperties",
+    "func_va": "0x1670f68",
+    "string_va": "0xc2b692"
+  },
+  {
+    "index": 135,
+    "name": "vkGetPhysicalDeviceImageFormatProperties",
+    "func_va": "0x16932a0",
+    "string_va": "0xc2b6b6"
+  },
+  {
+    "index": 136,
+    "name": "vkGetPhysicalDeviceMemoryProperties",
+    "func_va": "0x165471c",
+    "string_va": "0xc2b6df"
+  },
+  {
+    "index": 137,
+    "name": "vkGetPhysicalDeviceProperties",
+    "func_va": "0x16600ac",
+    "string_va": "0xc2b703"
+  },
+  {
+    "index": 138,
+    "name": "vkGetPhysicalDeviceQueueFamilyProperties",
+    "func_va": "0x1690d78",
+    "string_va": "0xc2b721"
+  },
+  {
+    "index": 139,
+    "name": "vkGetPhysicalDeviceSparseImageFormatProperties",
+    "func_va": "0x167b57c",
+    "string_va": "0xc2b74a"
+  },
+  {
+    "index": 140,
+    "name": "vkGetPipelineCacheData",
+    "func_va": "0x167b6b8",
+    "string_va": "0xc2bf76"
+  },
+  {
+    "index": 141,
+    "name": "vkGetQueryPoolResults",
+    "func_va": "0x167b620",
+    "string_va": "0xc2bf8d"
+  },
+  {
+    "index": 142,
+    "name": "vkGetRenderAreaGranularity",
+    "func_va": "0x16799c0",
+    "string_va": "0xc2bfa3"
+  },
+  {
+    "index": 143,
+    "name": "vkGetPhysicalDeviceSurfaceCapabilities2KHR",
+    "func_va": "0x167ab18",
+    "string_va": "0xc2ce6f"
+  },
+  {
+    "index": 144,
+    "name": "vkGetPhysicalDeviceSurfaceFormatsKHR",
+    "func_va": "0x167ab20",
+    "string_va": "0xc2ce4a"
+  },
+  {
+    "index": 145,
+    "name": "vkGetPhysicalDeviceSurfaceFormats2KHR",
+    "func_va": "0x167b3d0",
+    "string_va": "0xc2ce9a"
+  },
+  {
+    "index": 146,
+    "name": "vkGetSwapchainImagesKHR",
+    "func_va": "0x16799cc",
+    "string_va": "0xc2cf01"
+  },
+  {
+    "index": 147,
+    "name": "vkInvalidateMappedMemoryRanges",
+    "func_va": "0x167b110",
+    "string_va": "0xc2bfbe"
+  },
+  {
+    "index": 148,
+    "name": "vkMapMemory",
+    "func_va": "0x167b530",
+    "string_va": "0xc2bfdd"
+  },
+  {
+    "index": 149,
+    "name": "vkMapMemory2",
+    "func_va": "0x1660ae0",
+    "string_va": "0xc2c8be"
+  },
+  {
+    "index": 150,
+    "name": "vkMapMemory2KHR",
+    "func_va": "0x1660c24",
+    "string_va": "0xc2e9d3"
+  },
+  {
+    "index": 151,
+    "name": "vkMergePipelineCaches",
+    "func_va": "0x160ac60",
+    "string_va": "0xc2bfe9"
+  },
+  {
+    "index": 152,
+    "name": "vkGetPhysicalDeviceFeatures2KHR",
+    "func_va": "0x160ac68",
+    "string_va": "0xc2d457"
+  },
+  {
+    "index": 153,
+    "name": "vkGetPhysicalDeviceProperties2KHR",
+    "func_va": "0x1660ef0",
+    "string_va": "0xc2d477"
+  },
+  {
+    "index": 154,
+    "name": "vkGetPhysicalDeviceFormatProperties2KHR",
+    "func_va": "0x1660958",
+    "string_va": "0xc2d499"
+  },
+  {
+    "index": 155,
+    "name": "vkGetPhysicalDeviceImageFormatProperties2KHR",
+    "func_va": "0x16a7d74",
+    "string_va": "0xc2d4c1"
+  },
+  {
+    "index": 156,
+    "name": "vkGetPhysicalDeviceQueueFamilyProperties2KHR",
+    "func_va": "0x16a40a8",
+    "string_va": "0xc2d4ee"
+  },
+  {
+    "index": 157,
+    "name": "vkGetPhysicalDeviceMemoryProperties2KHR",
+    "func_va": "0x162b664",
+    "string_va": "0xc2d51b"
+  },
+  {
+    "index": 158,
+    "name": "vkGetPhysicalDeviceSparseImageFormatProperties2KHR",
+    "func_va": "0x16612f4",
+    "string_va": "0xc2d543"
+  },
+  {
+    "index": 159,
+    "name": "vkGetPhysicalDeviceExternalBufferPropertiesKHR",
+    "func_va": "0x1660f08",
+    "string_va": "0xc2cd46"
+  },
+  {
+    "index": 160,
+    "name": "vkGetPhysicalDeviceExternalSemaphorePropertiesKHR",
+    "func_va": "0x1660100",
+    "string_va": "0xc2cda1"
+  },
+  {
+    "index": 161,
+    "name": "vkGetMemoryFdPropertiesKHR",
+    "func_va": "0x168a964",
+    "string_va": "0xc2cd75"
+  },
+  {
+    "index": 162,
+    "name": "vkGetMemoryFdKHR",
+    "func_va": "0x168ab58",
+    "string_va": "0xc2cd90"
+  },
+  {
+    "index": 163,
+    "name": "vkImportSemaphoreFdKHR",
+    "func_va": "0x164bf98",
+    "string_va": "0xc2cdd3"
+  },
+  {
+    "index": 164,
+    "name": "vkGetSemaphoreFdKHR",
+    "func_va": "0x16a7e00",
+    "string_va": "0xc2cdea"
+  },
+  {
+    "index": 165,
+    "name": "vkGetFenceFdKHR",
+    "func_va": "0x160a2e0",
+    "string_va": "0xc2d2c2"
+  },
+  {
+    "index": 166,
+    "name": "vkImportFenceFdKHR",
+    "func_va": "0x160a2c0",
+    "string_va": "0xc2d2af"
+  },
+  {
+    "index": 167,
+    "name": "vkBindBufferMemory2KHR",
+    "func_va": "0x160abe0",
+    "string_va": "0xc2cba5"
+  },
+  {
+    "index": 168,
+    "name": "vkBindImageMemory2KHR",
+    "func_va": "0x160ac08",
+    "string_va": "0xc2cbbc"
+  },
+  {
+    "index": 169,
+    "name": "vkCreateDescriptorUpdateTemplateKHR",
+    "func_va": "0x160abf4",
+    "string_va": "0xc2ccd8"
+  },
+  {
+    "index": 170,
+    "name": "vkDestroyDescriptorUpdateTemplateKHR",
+    "func_va": "0x1660414",
+    "string_va": "0xc2ccfc"
+  },
+  {
+    "index": 171,
+    "name": "vkUpdateDescriptorSetWithTemplateKHR",
+    "func_va": "0x162b6d0",
+    "string_va": "0xc2cd21"
+  },
+  {
+    "index": 172,
+    "name": "vkAcquireNextImage2KHR",
+    "func_va": "0x162b6dc",
+    "string_va": "0xc2cb8e"
+  },
+  {
+    "index": 173,
+    "name": "vkCmdDispatchBaseKHR",
+    "func_va": "0x16933f0",
+    "string_va": "0xc2cb03"
+  },
+  {
+    "index": 174,
+    "name": "vkCmdSetDeviceMaskKHR",
+    "func_va": "0x1661a44",
+    "string_va": "0xc2caed"
+  },
+  {
+    "index": 175,
+    "name": "vkEnumeratePhysicalDeviceGroupsKHR",
+    "func_va": "0x169b778",
+    "string_va": "0xc2caa4"
+  },
+  {
+    "index": 176,
+    "name": "vkGetDeviceGroupPeerMemoryFeaturesKHR",
+    "func_va": "0x1661aec",
+    "string_va": "0xc2cac7"
+  },
+  {
+    "index": 177,
+    "name": "vkGetPhysicalDevicePresentRectanglesKHR",
+    "func_va": "0x1661ae4",
+    "string_va": "0xc2cb18"
+  },
+  {
+    "index": 178,
+    "name": "vkGetDeviceGroupPresentCapabilitiesKHR",
+    "func_va": "0x167c43c",
+    "string_va": "0xc2cb40"
+  },
+  {
+    "index": 179,
+    "name": "vkGetDeviceGroupSurfacePresentModesKHR",
+    "func_va": "0x160bab4",
+    "string_va": "0xc2cb67"
+  },
+  {
+    "index": 180,
+    "name": "vkQueueBindSparse",
+    "func_va": "0x160baec",
+    "string_va": "0xc2bfff"
+  },
+  {
+    "index": 181,
+    "name": "vkQueuePresentKHR",
+    "func_va": "0x160bb18",
+    "string_va": "0xc2cf19"
+  },
+  {
+    "index": 182,
+    "name": "vkQueueSubmit",
+    "func_va": "0x160bb54",
+    "string_va": "0xc2c011"
+  },
+  {
+    "index": 183,
+    "name": "vkQueueWaitIdle",
+    "func_va": "0x160bb70",
+    "string_va": "0xc2c01f"
+  },
+  {
+    "index": 184,
+    "name": "vkResetCommandBuffer",
+    "func_va": "0x160bc50",
+    "string_va": "0xc2c02f"
+  },
+  {
+    "index": 185,
+    "name": "vkResetCommandPool",
+    "func_va": "0x160bc58",
+    "string_va": "0xc2c044"
+  },
+  {
+    "index": 186,
+    "name": "vkResetDescriptorPool",
+    "func_va": "0x160bc84",
+    "string_va": "0xc2c057"
+  },
+  {
+    "index": 187,
+    "name": "vkResetEvent",
+    "func_va": "0x160bcbc",
+    "string_va": "0xc2c06d"
+  },
+  {
+    "index": 188,
+    "name": "vkResetFences",
+    "func_va": "0x160bcdc",
+    "string_va": "0xc2c07a"
+  },
+  {
+    "index": 189,
+    "name": "vkSetEvent",
+    "func_va": "0x160bd14",
+    "string_va": "0xc2c088"
+  },
+  {
+    "index": 190,
+    "name": "vkTrimCommandPoolKHR",
+    "func_va": "0x160bd4c",
+    "string_va": "0xc2cdfe"
+  },
+  {
+    "index": 191,
+    "name": "vkUnmapMemory",
+    "func_va": "0x160c0fc",
+    "string_va": "0xc2c093"
+  },
+  {
+    "index": 192,
+    "name": "vkUnmapMemory2",
+    "func_va": "0x160c134",
+    "string_va": "0xc2c8cb"
+  },
+  {
+    "index": 193,
+    "name": "vkUnmapMemory2KHR",
+    "func_va": "0x160c168",
+    "string_va": "0xc2e9e3"
+  },
+  {
+    "index": 194,
+    "name": "vkUpdateDescriptorSets",
+    "func_va": "0x16990dc",
+    "string_va": "0xc2c0a1"
+  },
+  {
+    "index": 195,
+    "name": "vkWaitForFences",
+    "func_va": "0x16991d0",
+    "string_va": "0xc2c0b8"
+  },
+  {
+    "index": 196,
+    "name": "vkGetShaderInfoAMD",
+    "func_va": "0x1699258",
+    "string_va": "0xc2d030"
+  },
+  {
+    "index": 197,
+    "name": "vkCmdDebugMarkerBeginEXT",
+    "func_va": "0x16995cc",
+    "string_va": "0xc2d043"
+  },
+  {
+    "index": 198,
+    "name": "vkCmdDebugMarkerEndEXT",
+    "func_va": "0x160c214",
+    "string_va": "0xc2d05c"
+  },
+  {
+    "index": 199,
+    "name": "vkCmdDebugMarkerInsertEXT",
+    "func_va": "0x160c238",
+    "string_va": "0xc2d073"
+  },
+  {
+    "index": 200,
+    "name": "vkDebugMarkerSetObjectTagEXT",
+    "func_va": "0x160c250",
+    "string_va": "0xc2d08d"
+  },
+  {
+    "index": 201,
+    "name": "vkDebugMarkerSetObjectNameEXT",
+    "func_va": "0x160c268",
+    "string_va": "0xc2d0aa"
+  },
+  {
+    "index": 202,
+    "name": "vkCreateGpaSessionAMD",
+    "func_va": "0x160c288",
+    "string_va": "0xc2d0c8"
+  },
+  {
+    "index": 203,
+    "name": "vkDestroyGpaSessionAMD",
+    "func_va": "0x160c2a8",
+    "string_va": "0xc2d0de"
+  },
+  {
+    "index": 204,
+    "name": "vkSetGpaDeviceClockModeAMD",
+    "func_va": "0x160baa4",
+    "string_va": "0xc2d0f5"
+  },
+  {
+    "index": 205,
+    "name": "vkCmdBeginGpaSessionAMD",
+    "func_va": "0x160baac",
+    "string_va": "0xc2d110"
+  },
+  {
+    "index": 206,
+    "name": "vkCmdEndGpaSessionAMD",
+    "func_va": "0x16620c0",
+    "string_va": "0xc2d128"
+  },
+  {
+    "index": 207,
+    "name": "vkCmdBeginGpaSampleAMD",
+    "func_va": "0x1662198",
+    "string_va": "0xc2d13e"
+  },
+  {
+    "index": 208,
+    "name": "vkCmdEndGpaSampleAMD",
+    "func_va": "0x16621a0",
+    "string_va": "0xc2d155"
+  },
+  {
+    "index": 209,
+    "name": "vkGetGpaSessionStatusAMD",
+    "func_va": "0x160b8c0",
+    "string_va": "0xc2d16a"
+  },
+  {
+    "index": 210,
+    "name": "vkGetGpaSessionResultsAMD",
+    "func_va": "0x160b8c8",
+    "string_va": "0xc2d183"
+  },
+  {
+    "index": 211,
+    "name": "vkResetGpaSessionAMD",
+    "func_va": "0x160b9d4",
+    "string_va": "0xc2d19d"
+  },
+  {
+    "index": 212,
+    "name": "vkCmdCopyGpaSessionResultsAMD",
+    "func_va": "0x160b9dc",
+    "string_va": "0xc2d1b2"
+  },
+  {
+    "index": 213,
+    "name": "vkGetImageMemoryRequirements2KHR",
+    "func_va": "0x160ba68",
+    "string_va": "0xc2d1d0"
+  },
+  {
+    "index": 214,
+    "name": "vkGetBufferMemoryRequirements2KHR",
+    "func_va": "0x169e8cc",
+    "string_va": "0xc2d1f1"
+  },
+  {
+    "index": 215,
+    "name": "vkGetImageSparseMemoryRequirements2KHR",
+    "func_va": "0x16931f8",
+    "string_va": "0xc2d213"
+  },
+  {
+    "index": 216,
+    "name": "vkCmdSetSampleLocationsEXT",
+    "func_va": "0x16932c0",
+    "string_va": "0xc2d23a"
+  },
+  {
+    "index": 217,
+    "name": "vkGetPhysicalDeviceMultisamplePropertiesEXT",
+    "func_va": "0x168a7c8",
+    "string_va": "0xc2d255"
+  },
+  {
+    "index": 218,
+    "name": "vkGetDescriptorSetLayoutSupportKHR",
+    "func_va": "0x168a86c",
+    "string_va": "0xc2ce13"
+  },
+  {
+    "index": 219,
+    "name": "vkGetPhysicalDeviceExternalFencePropertiesKHR",
+    "func_va": "0x1660a2c",
+    "string_va": "0xc2d281"
+  },
+  {
+    "index": 220,
+    "name": "vkBindBufferMemory2",
+    "func_va": "0x160a04c",
+    "string_va": "0xc2c278"
+  },
+  {
+    "index": 221,
+    "name": "vkBindImageMemory2",
+    "func_va": "0x160c2c8",
+    "string_va": "0xc2c28c"
+  },
+  {
+    "index": 222,
+    "name": "vkCmdSetDeviceMask",
+    "func_va": "0x160c2e8",
+    "string_va": "0xc2c2b1"
+  },
+  {
+    "index": 223,
+    "name": "vkCmdDispatchBase",
+    "func_va": "0x1609fcc",
+    "string_va": "0xc2c29f"
+  },
+  {
+    "index": 224,
+    "name": "vkCreateDescriptorUpdateTemplate",
+    "func_va": "0x160ab04",
+    "string_va": "0xc2c2c4"
+  },
+  {
+    "index": 225,
+    "name": "vkCreateSamplerYcbcrConversion",
+    "func_va": "0x160c2d8",
+    "string_va": "0xc2c2e5"
+  },
+  {
+    "index": 226,
+    "name": "vkCreateSamplerYcbcrConversionKHR",
+    "func_va": "0x160c2f8",
+    "string_va": "0xc2cfeb"
+  },
+  {
+    "index": 227,
+    "name": "vkDestroyDescriptorUpdateTemplate",
+    "func_va": "0x160c7b4",
+    "string_va": "0xc2c304"
+  },
+  {
+    "index": 228,
+    "name": "vkDestroySamplerYcbcrConversion",
+    "func_va": "0x160c7bc",
+    "string_va": "0xc2c326"
+  },
+  {
+    "index": 229,
+    "name": "vkDestroySamplerYcbcrConversionKHR",
+    "func_va": "0x168ab78",
+    "string_va": "0xc2d00d"
+  },
+  {
+    "index": 230,
+    "name": "vkEnumeratePhysicalDeviceGroups",
+    "func_va": "0x168bbb0",
+    "string_va": "0xc2c0c8"
+  },
+  {
+    "index": 231,
+    "name": "vkGetBufferMemoryRequirements2",
+    "func_va": "0x168cacc",
+    "string_va": "0xc2c346"
+  },
+  {
+    "index": 232,
+    "name": "vkGetDescriptorSetLayoutSupport",
+    "func_va": "0x168d9ec",
+    "string_va": "0xc2c365"
+  },
+  {
+    "index": 233,
+    "name": "vkGetDeviceGroupPeerMemoryFeatures",
+    "func_va": "0x160b778",
+    "string_va": "0xc2c385"
+  },
+  {
+    "index": 234,
+    "name": "vkGetDeviceQueue2",
+    "func_va": "0x1690d78",
+    "string_va": "0xc2c3a8"
+  },
+  {
+    "index": 235,
+    "name": "vkGetImageMemoryRequirements2",
+    "func_va": "0x1660f08",
+    "string_va": "0xc2c3ba"
+  },
+  {
+    "index": 236,
+    "name": "vkGetImageSparseMemoryRequirements2",
+    "func_va": "0x160ac68",
+    "string_va": "0xc2c3d8"
+  },
+  {
+    "index": 237,
+    "name": "vkGetPhysicalDeviceExternalBufferProperties",
+    "func_va": "0x160ac60",
+    "string_va": "0xc2c0e8"
+  },
+  {
+    "index": 238,
+    "name": "vkGetPhysicalDeviceExternalFenceProperties",
+    "func_va": "0x167b794",
+    "string_va": "0xc2c114"
+  },
+  {
+    "index": 239,
+    "name": "vkGetPhysicalDeviceExternalSemaphoreProperties",
+    "func_va": "0x1660ffc",
+    "string_va": "0xc2c13f"
+  },
+  {
+    "index": 240,
+    "name": "vkGetPhysicalDeviceFeatures2",
+    "func_va": "0x1661048",
+    "string_va": "0xc2c16e"
+  },
+  {
+    "index": 241,
+    "name": "vkGetPhysicalDeviceFormatProperties2",
+    "func_va": "0x16a6eb4",
+    "string_va": "0xc2c18b"
+  },
+  {
+    "index": 242,
+    "name": "vkGetPhysicalDeviceImageFormatProperties2",
+    "func_va": "0x1660ae0",
+    "string_va": "0xc2c1b0"
+  },
+  {
+    "index": 243,
+    "name": "vkGetPhysicalDeviceMemoryProperties2",
+    "func_va": "0x1660c24",
+    "string_va": "0xc2c1da"
+  },
+  {
+    "index": 244,
+    "name": "vkGetPhysicalDeviceProperties2",
+    "func_va": "0x162b6d0",
+    "string_va": "0xc2c1ff"
+  },
+  {
+    "index": 245,
+    "name": "vkGetPhysicalDeviceQueueFamilyProperties2",
+    "func_va": "0x162b6dc",
+    "string_va": "0xc2c21e"
+  },
+  {
+    "index": 246,
+    "name": "vkGetPhysicalDeviceSparseImageFormatProperties2",
+    "func_va": "0x16933f0",
+    "string_va": "0xc2c248"
+  },
+  {
+    "index": 247,
+    "name": "vkTrimCommandPool",
+    "func_va": "0x1661ff4",
+    "string_va": "0xc2c3fc"
+  },
+  {
+    "index": 248,
+    "name": "vkUpdateDescriptorSetWithTemplate",
+    "func_va": "0x16c8c00",
+    "string_va": "0xc2c40e"
+  },
+  {
+    "index": 249,
+    "name": "vkCreateDebugReportCallbackEXT",
+    "func_va": "0x16c8d08",
+    "string_va": "0xc2d2ec"
+  },
+  {
+    "index": 250,
+    "name": "vkDestroyDebugReportCallbackEXT",
+    "func_va": "0x16c8d18",
+    "string_va": "0xc2d30b"
+  },
+  {
+    "index": 251,
+    "name": "vkDebugReportMessageEXT",
+    "func_va": "0x16c8d28",
+    "string_va": "0xc2d32b"
+  },
+  {
+    "index": 252,
+    "name": "vkGetSwapchainGrallocUsageANDROID",
+    "func_va": "0x1660ef0",
+    "string_va": "0xc2da65"
+  },
+  {
+    "index": 253,
+    "name": "vkGetSwapchainGrallocUsage2ANDROID",
+    "func_va": "0x16a7d74",
+    "string_va": "0xc2da87"
+  },
+  {
+    "index": 254,
+    "name": "vkAcquireImageANDROID",
+    "func_va": "0x16a7e00",
+    "string_va": "0xc2daaa"
+  },
+  {
+    "index": 255,
+    "name": "vkQueueSignalReleaseImageANDROID",
+    "func_va": "0x167b57c",
+    "string_va": "0xc2dac0"
+  },
+  {
+    "index": 256,
+    "name": "vkGetAndroidHardwareBufferPropertiesANDROID",
+    "func_va": "0x16933bc",
+    "string_va": "0xc2dae1"
+  },
+  {
+    "index": 257,
+    "name": "vkGetMemoryAndroidHardwareBufferANDROID",
+    "func_va": "0x1693314",
+    "string_va": "0xc2db0d"
+  },
+  {
+    "index": 258,
+    "name": "vkGetSemaphoreCounterValue",
+    "func_va": "0x167b620",
+    "string_va": "0xc2c514"
+  },
+  {
+    "index": 259,
+    "name": "vkWaitSemaphores",
+    "func_va": "0x1660a70",
+    "string_va": "0xc2c552"
+  },
+  {
+    "index": 260,
+    "name": "vkSignalSemaphore",
+    "func_va": "0x16a4b80",
+    "string_va": "0xc2c540"
+  },
+  {
+    "index": 261,
+    "name": "vkGetSemaphoreCounterValueKHR",
+    "func_va": "0x164bf98",
+    "string_va": "0xc2da1e"
+  },
+  {
+    "index": 262,
+    "name": "vkWaitSemaphoresKHR",
+    "func_va": "0x16612f4",
+    "string_va": "0xc2da3c"
+  },
+  {
+    "index": 263,
+    "name": "vkSignalSemaphoreKHR",
+    "func_va": "0x16a7268",
+    "string_va": "0xc2da50"
+  },
+  {
+    "index": 264,
+    "name": "vkCmdWriteBufferMarkerAMD",
+    "func_va": "0x16798b4",
+    "string_va": "0xc2d2d2"
+  },
+  {
+    "index": 265,
+    "name": "vkGetMemoryHostPointerPropertiesEXT",
+    "func_va": null,
+    "string_va": "0xc2d343"
+  },
+  {
+    "index": 266,
+    "name": "vkGetPhysicalDeviceDisplayPropertiesKHR",
+    "func_va": null,
+    "string_va": "0xc2d367"
+  },
+  {
+    "index": 267,
+    "name": "vkGetPhysicalDeviceDisplayPlanePropertiesKHR",
+    "func_va": null,
+    "string_va": "0xc2d38f"
+  },
+  {
+    "index": 268,
+    "name": "vkGetDisplayPlaneSupportedDisplaysKHR",
+    "func_va": "0x1679708",
+    "string_va": "0xc2d3bc"
+  },
+  {
+    "index": 269,
+    "name": "vkGetDisplayModePropertiesKHR",
+    "func_va": "0x16798bc",
+    "string_va": "0xc2d3e2"
+  },
+  {
+    "index": 270,
+    "name": "vkCreateDisplayModeKHR",
+    "func_va": null,
+    "string_va": "0xc2d400"
+  },
+  {
+    "index": 271,
+    "name": "vkGetDisplayPlaneCapabilitiesKHR",
+    "func_va": null,
+    "string_va": "0xc2d417"
+  },
+  {
+    "index": 272,
+    "name": "vkCreateDisplayPlaneSurfaceKHR",
+    "func_va": null,
+    "string_va": "0xc2d438"
+  },
+  {
+    "index": 273,
+    "name": "vkGetPhysicalDeviceDisplayProperties2KHR",
+    "func_va": null,
+    "string_va": "0xc2d58a"
+  },
+  {
+    "index": 274,
+    "name": "vkGetPhysicalDeviceDisplayPlaneProperties2KHR",
+    "func_va": null,
+    "string_va": "0xc2d5b3"
+  },
+  {
+    "index": 275,
+    "name": "vkGetDisplayModeProperties2KHR",
+    "func_va": null,
+    "string_va": "0xc2d5e1"
+  },
+  {
+    "index": 276,
+    "name": "vkGetDisplayPlaneCapabilities2KHR",
+    "func_va": "0x16a6e18",
+    "string_va": "0xc2d600"
+  },
+  {
+    "index": 277,
+    "name": "vkGetPhysicalDeviceSurfaceCapabilities2EXT",
+    "func_va": "0x1660a08",
+    "string_va": "0xc2d7c5"
+  },
+  {
+    "index": 278,
+    "name": "vkCmdBindTransformFeedbackBuffersEXT",
+    "func_va": "0x16a6c68",
+    "string_va": "0xc2d7f0"
+  },
+  {
+    "index": 279,
+    "name": "vkCmdBeginTransformFeedbackEXT",
+    "func_va": "0x16a6db8",
+    "string_va": "0xc2d815"
+  },
+  {
+    "index": 280,
+    "name": "vkCmdEndTransformFeedbackEXT",
+    "func_va": "0x16a0164",
+    "string_va": "0xc2d834"
+  },
+  {
+    "index": 281,
+    "name": "vkCmdBeginQueryIndexedEXT",
+    "func_va": "0x160b7c0",
+    "string_va": "0xc2d851"
+  },
+  {
+    "index": 282,
+    "name": "vkCmdEndQueryIndexedEXT",
+    "func_va": "0x167c5e0",
+    "string_va": "0xc2d86b"
+  },
+  {
+    "index": 283,
+    "name": "vkCmdDrawIndirectByteCountEXT",
+    "func_va": "0x160a2e0",
+    "string_va": "0xc2d883"
+  },
+  {
+    "index": 284,
+    "name": "vkSetDebugUtilsObjectNameEXT",
+    "func_va": "0x160a2c0",
+    "string_va": "0xc2d67e"
+  },
+  {
+    "index": 285,
+    "name": "vkSetDebugUtilsObjectTagEXT",
+    "func_va": "0x160a2c0",
+    "string_va": "0xc2d69b"
+  },
+  {
+    "index": 286,
+    "name": "vkQueueBeginDebugUtilsLabelEXT",
+    "func_va": "0x160a2e0",
+    "string_va": "0xc2d6b7"
+  },
+  {
+    "index": 287,
+    "name": "vkQueueEndDebugUtilsLabelEXT",
+    "func_va": "0x1660958",
+    "string_va": "0xc2d6d6"
+  },
+  {
+    "index": 288,
+    "name": "vkQueueInsertDebugUtilsLabelEXT",
+    "func_va": "0x16a40a8",
+    "string_va": "0xc2d6f3"
+  },
+  {
+    "index": 289,
+    "name": "vkCmdBeginDebugUtilsLabelEXT",
+    "func_va": "0x1694cfc",
+    "string_va": "0xc2d713"
+  },
+  {
+    "index": 290,
+    "name": "vkCmdEndDebugUtilsLabelEXT",
+    "func_va": "0x160b01c",
+    "string_va": "0xc2d730"
+  },
+  {
+    "index": 291,
+    "name": "vkCmdInsertDebugUtilsLabelEXT",
+    "func_va": "0x160b020",
+    "string_va": "0xc2d74b"
+  },
+  {
+    "index": 292,
+    "name": "vkCreateDebugUtilsMessengerEXT",
+    "func_va": "0x160b024",
+    "string_va": "0xc2d769"
+  },
+  {
+    "index": 293,
+    "name": "vkDestroyDebugUtilsMessengerEXT",
+    "func_va": "0x1661058",
+    "string_va": "0xc2d788"
+  },
+  {
+    "index": 294,
+    "name": "vkSubmitDebugUtilsMessageEXT",
+    "func_va": "0x1661060",
+    "string_va": "0xc2d7a8"
+  },
+  {
+    "index": 295,
+    "name": "vkCreateDeferredOperationKHR",
+    "func_va": "0x16a7288",
+    "string_va": "0xc2cc3a"
+  },
+  {
+    "index": 296,
+    "name": "vkDestroyDeferredOperationKHR",
+    "func_va": "0x16a742c",
+    "string_va": "0xc2cc57"
+  },
+  {
+    "index": 297,
+    "name": "vkGetDeferredOperationResultKHR",
+    "func_va": "0x1661180",
+    "string_va": "0xc2cc75"
+  },
+  {
+    "index": 298,
+    "name": "vkGetDeferredOperationMaxConcurrencyKHR",
+    "func_va": "0x16a747c",
+    "string_va": "0xc2cc95"
+  },
+  {
+    "index": 299,
+    "name": "vkDeferredOperationJoinKHR",
+    "func_va": "0x16a7540",
+    "string_va": "0xc2ccbd"
+  },
+  {
+    "index": 300,
+    "name": "vkCreateAccelerationStructureKHR",
+    "func_va": "0x16a75d0",
+    "string_va": "0xc2db9c"
+  },
+  {
+    "index": 301,
+    "name": "vkDestroyAccelerationStructureKHR",
+    "func_va": "0x16a78bc",
+    "string_va": "0xc2dbbd"
+  },
+  {
+    "index": 302,
+    "name": "vkCmdBuildAccelerationStructuresKHR",
+    "func_va": "0x16a78d8",
+    "string_va": "0xc2dbdf"
+  },
+  {
+    "index": 303,
+    "name": "vkCmdBuildAccelerationStructuresIndirectKHR",
+    "func_va": "0x16a78f8",
+    "string_va": "0xc2dc03"
+  },
+  {
+    "index": 304,
+    "name": "vkBuildAccelerationStructuresKHR",
+    "func_va": "0x16a7984",
+    "string_va": "0xc2dc2f"
+  },
+  {
+    "index": 305,
+    "name": "vkCopyAccelerationStructureToMemoryKHR",
+    "func_va": "0x16a7a0c",
+    "string_va": "0xc2dc6f"
+  },
+  {
+    "index": 306,
+    "name": "vkCopyAccelerationStructureKHR",
+    "func_va": "0x168a964",
+    "string_va": "0xc2dc50"
+  },
+  {
+    "index": 307,
+    "name": "vkCopyMemoryToAccelerationStructureKHR",
+    "func_va": "0x162b664",
+    "string_va": "0xc2dc96"
+  },
+  {
+    "index": 308,
+    "name": "vkWriteAccelerationStructuresPropertiesKHR",
+    "func_va": "0x168ab58",
+    "string_va": "0xc2dcbd"
+  },
+  {
+    "index": 309,
+    "name": "vkCmdCopyAccelerationStructureKHR",
+    "func_va": "0x160b034",
+    "string_va": "0xc2dce8"
+  },
+  {
+    "index": 310,
+    "name": "vkCmdCopyAccelerationStructureToMemoryKHR",
+    "func_va": "0x167b0f8",
+    "string_va": "0xc2dd0a"
+  },
+  {
+    "index": 311,
+    "name": "vkCmdCopyMemoryToAccelerationStructureKHR",
+    "func_va": "0x167b6b8",
+    "string_va": "0xc2dd34"
+  },
+  {
+    "index": 312,
+    "name": "vkCmdTraceRaysKHR",
+    "func_va": "0x16715ac",
+    "string_va": "0xc2de10"
+  },
+  {
+    "index": 313,
+    "name": "vkCreateRayTracingPipelinesKHR",
+    "func_va": "0x16717e4",
+    "string_va": "0xc2de22"
+  },
+  {
+    "index": 314,
+    "name": "vkGetRayTracingShaderGroupHandlesKHR",
+    "func_va": "0x160b0b4",
+    "string_va": "0xc2de41"
+  },
+  {
+    "index": 315,
+    "name": "vkGetAccelerationStructureDeviceAddressKHR",
+    "func_va": "0x1653bc8",
+    "string_va": "0xc2dd5e"
+  },
+  {
+    "index": 316,
+    "name": "vkGetRayTracingCaptureReplayShaderGroupHandlesKHR",
+    "func_va": "0x1653cc4",
+    "string_va": "0xc2de66"
+  },
+  {
+    "index": 317,
+    "name": "vkCmdWriteAccelerationStructuresPropertiesKHR",
+    "func_va": "0x1653dc4",
+    "string_va": "0xc2dd89"
+  },
+  {
+    "index": 318,
+    "name": "vkCmdTraceRaysIndirectKHR",
+    "func_va": "0x1661ba8",
+    "string_va": "0xc2de98"
+  },
+  {
+    "index": 319,
+    "name": "vkGetDeviceAccelerationStructureCompatibilityKHR",
+    "func_va": "0x167b858",
+    "string_va": "0xc2dddf"
+  },
+  {
+    "index": 320,
+    "name": "vkGetRayTracingShaderGroupStackSizeKHR",
+    "func_va": "0x167b864",
+    "string_va": "0xc2deb2"
+  },
+  {
+    "index": 321,
+    "name": "vkCmdSetRayTracingPipelineStackSizeKHR",
+    "func_va": "0x167ba5c",
+    "string_va": "0xc2ded9"
+  },
+  {
+    "index": 322,
+    "name": "vkGetAccelerationStructureBuildSizesKHR",
+    "func_va": "0x167bc44",
+    "string_va": "0xc2ddb7"
+  },
+  {
+    "index": 323,
+    "name": "vkCmdTraceRaysIndirect2KHR",
+    "func_va": "0x167bc50",
+    "string_va": "0xc2e5e2"
+  },
+  {
+    "index": 324,
+    "name": "vkGetPipelineExecutablePropertiesKHR",
+    "func_va": "0x167bda4",
+    "string_va": "0xc2d915"
+  },
+  {
+    "index": 325,
+    "name": "vkGetPipelineExecutableStatisticsKHR",
+    "func_va": "0x16a713c",
+    "string_va": "0xc2d93a"
+  },
+  {
+    "index": 326,
+    "name": "vkGetPipelineExecutableInternalRepresentationsKHR",
+    "func_va": "0x16799c0",
+    "string_va": "0xc2d95f"
+  },
+  {
+    "index": 327,
+    "name": "vkGetBufferDeviceAddress",
+    "func_va": "0x16799cc",
+    "string_va": "0xc2c4b5"
+  },
+  {
+    "index": 328,
+    "name": "vkGetBufferOpaqueCaptureAddress",
+    "func_va": "0x167ab18",
+    "string_va": "0xc2c4ce"
+  },
+  {
+    "index": 329,
+    "name": "vkGetDeviceMemoryOpaqueCaptureAddress",
+    "func_va": "0x167ab20",
+    "string_va": "0xc2c4ee"
+  },
+  {
+    "index": 330,
+    "name": "vkGetBufferDeviceAddressKHR",
+    "func_va": "0x167b110",
+    "string_va": "0xc2cbd2"
+  },
+  {
+    "index": 331,
+    "name": "vkGetBufferDeviceAddressEXT",
+    "func_va": "0x167b3d0",
+    "string_va": "0xc2e964"
+  },
+  {
+    "index": 332,
+    "name": "vkGetBufferOpaqueCaptureAddressKHR",
+    "func_va": "0x167b530",
+    "string_va": "0xc2cbee"
+  },
+  {
+    "index": 333,
+    "name": "vkGetDeviceMemoryOpaqueCaptureAddressKHR",
+    "func_va": "0x167b704",
+    "string_va": "0xc2cc11"
+  },
+  {
+    "index": 334,
+    "name": "vkResetQueryPool",
+    "func_va": null,
+    "string_va": "0xc2c52f"
+  },
+  {
+    "index": 335,
+    "name": "vkResetQueryPoolEXT",
+    "func_va": null,
+    "string_va": "0xc2d8a1"
+  },
+  {
+    "index": 336,
+    "name": "vkCmdSetLineStipple",
+    "func_va": "0x167be04",
+    "string_va": "0xc2ca90"
+  },
+  {
+    "index": 337,
+    "name": "vkCmdSetLineStippleEXT",
+    "func_va": "0x167be1c",
+    "string_va": "0xc2d991"
+  },
+  {
+    "index": 338,
+    "name": "vkCmdSetLineStippleKHR",
+    "func_va": "0x167c010",
+    "string_va": "0xc2d9a8"
+  },
+  {
+    "index": 339,
+    "name": "vkGetDeviceFaultInfoEXT",
+    "func_va": "0x167c028",
+    "string_va": "0xc2e654"
+  },
+  {
+    "index": 340,
+    "name": "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT",
+    "func_va": "0x1660414",
+    "string_va": "0xc2d8c9"
+  },
+  {
+    "index": 341,
+    "name": "vkGetCalibratedTimestampsEXT",
+    "func_va": "0x160abe0",
+    "string_va": "0xc2d8f8"
+  },
+  {
+    "index": 342,
+    "name": "vkCmdBeginConditionalRenderingEXT",
+    "func_va": "0x160abf4",
+    "string_va": "0xc2db35"
+  },
+  {
+    "index": 343,
+    "name": "vkCmdEndConditionalRenderingEXT",
+    "func_va": "0x160ac08",
+    "string_va": "0xc2db57"
+  },
+  {
+    "index": 344,
+    "name": "vkCmdSetEvent2",
+    "func_va": "0x1661070",
+    "string_va": "0xc2c853"
+  },
+  {
+    "index": 345,
+    "name": "vkCmdResetEvent2",
+    "func_va": "0x1661068",
+    "string_va": "0xc2c862"
+  },
+  {
+    "index": 346,
+    "name": "vkCmdWaitEvents2",
+    "func_va": "0x16a105c",
+    "string_va": "0xc2c873"
+  },
+  {
+    "index": 347,
+    "name": "vkCmdPipelineBarrier2",
+    "func_va": "0x16a1060",
+    "string_va": "0xc2c884"
+  },
+  {
+    "index": 348,
+    "name": "vkCmdWriteTimestamp2",
+    "func_va": "0x16a1064",
+    "string_va": "0xc2c89a"
+  },
+  {
+    "index": 349,
+    "name": "vkCmdWriteBufferMarker2AMD",
+    "func_va": "0x160b028",
+    "string_va": "0xc2df7d"
+  },
+  {
+    "index": 350,
+    "name": "vkQueueSubmit2",
+    "func_va": "0x160b02c",
+    "string_va": "0xc2c8af"
+  },
+  {
+    "index": 351,
+    "name": "vkCmdSetEvent2KHR",
+    "func_va": "0x160b030",
+    "string_va": "0xc2df00"
+  },
+  {
+    "index": 352,
+    "name": "vkCmdResetEvent2KHR",
+    "func_va": "0x1653e90",
+    "string_va": "0xc2df12"
+  },
+  {
+    "index": 353,
+    "name": "vkCmdWaitEvents2KHR",
+    "func_va": "0x1653f8c",
+    "string_va": "0xc2df26"
+  },
+  {
+    "index": 354,
+    "name": "vkCmdPipelineBarrier2KHR",
+    "func_va": "0x165408c",
+    "string_va": "0xc2df3a"
+  },
+  {
+    "index": 355,
+    "name": "vkCmdWriteTimestamp2KHR",
+    "func_va": "0x167c08c",
+    "string_va": "0xc2df53"
+  },
+  {
+    "index": 356,
+    "name": "vkQueueSubmit2KHR",
+    "func_va": "0x160b0e8",
+    "string_va": "0xc2df6b"
+  },
+  {
+    "index": 357,
+    "name": "vkCmdBeginRendering",
+    "func_va": "0x160b0f0",
+    "string_va": "0xc2c7bd"
+  },
+  {
+    "index": 358,
+    "name": "vkCmdEndRendering",
+    "func_va": "0x160b0f8",
+    "string_va": "0xc2c7d1"
+  },
+  {
+    "index": 359,
+    "name": "vkCmdBeginRenderingKHR",
+    "func_va": "0x160b100",
+    "string_va": "0xc2df98"
+  },
+  {
+    "index": 360,
+    "name": "vkCmdEndRenderingKHR",
+    "func_va": "0x160b108",
+    "string_va": "0xc2dfaf"
+  },
+  {
+    "index": 361,
+    "name": "vkGetPhysicalDeviceToolProperties",
+    "func_va": "0x160b134",
+    "string_va": "0xc2c563"
+  },
+  {
+    "index": 362,
+    "name": "vkGetPhysicalDeviceToolPropertiesEXT",
+    "func_va": "0x169b778",
+    "string_va": "0xc2db77"
+  },
+  {
+    "index": 363,
+    "name": "vkCmdSetCullMode",
+    "func_va": "0x16a6ef4",
+    "string_va": "0xc2c585"
+  },
+  {
+    "index": 364,
+    "name": "vkCmdSetFrontFace",
+    "func_va": "0x167c254",
+    "string_va": "0xc2c596"
+  },
+  {
+    "index": 365,
+    "name": "vkCmdSetPrimitiveTopology",
+    "func_va": "0x1661574",
+    "string_va": "0xc2c5a8"
+  },
+  {
+    "index": 366,
+    "name": "vkCmdSetViewportWithCount",
+    "func_va": "0x169502c",
+    "string_va": "0xc2c5c2"
+  },
+  {
+    "index": 367,
+    "name": "vkCmdSetScissorWithCount",
+    "func_va": "0x1695574",
+    "string_va": "0xc2c5dc"
+  },
+  {
+    "index": 368,
+    "name": "vkCmdBindVertexBuffers2",
+    "func_va": "0x169585c",
+    "string_va": "0xc2c5f5"
+  },
+  {
+    "index": 369,
+    "name": "vkCmdSetDepthTestEnable",
+    "func_va": "0x160b778",
+    "string_va": "0xc2c60d"
+  },
+  {
+    "index": 370,
+    "name": "vkCmdSetDepthWriteEnable",
+    "func_va": "0x160b778",
+    "string_va": "0xc2c625"
+  },
+  {
+    "index": 371,
+    "name": "vkCmdSetDepthCompareOp",
+    "func_va": "0x16990dc",
+    "string_va": "0xc2c63e"
+  },
+  {
+    "index": 372,
+    "name": "vkCmdSetDepthBoundsTestEnable",
+    "func_va": "0x16991d0",
+    "string_va": "0xc2c655"
+  },
+  {
+    "index": 373,
+    "name": "vkCmdSetStencilTestEnable",
+    "func_va": "0x1699258",
+    "string_va": "0xc2c673"
+  },
+  {
+    "index": 374,
+    "name": "vkCmdSetStencilOp",
+    "func_va": "0x16995cc",
+    "string_va": "0xc2c68d"
+  },
+  {
+    "index": 375,
+    "name": "vkCmdSetCullModeEXT",
+    "func_va": "0x1661a44",
+    "string_va": "0xc2dfc4"
+  },
+  {
+    "index": 376,
+    "name": "vkCmdSetFrontFaceEXT",
+    "func_va": "0x1661ae4",
+    "string_va": "0xc2dfd8"
+  },
+  {
+    "index": 377,
+    "name": "vkCmdSetPrimitiveTopologyEXT",
+    "func_va": "0x1661aec",
+    "string_va": "0xc2dfed"
+  },
+  {
+    "index": 378,
+    "name": "vkCmdSetViewportWithCountEXT",
+    "func_va": "0x16616d0",
+    "string_va": "0xc2e00a"
+  },
+  {
+    "index": 379,
+    "name": "vkCmdSetScissorWithCountEXT",
+    "func_va": "0x1661804",
+    "string_va": "0xc2e027"
+  },
+  {
+    "index": 380,
+    "name": "vkCmdBindVertexBuffers2EXT",
+    "func_va": "0x1661964",
+    "string_va": "0xc2e043"
+  },
+  {
+    "index": 381,
+    "name": "vkCmdSetDepthTestEnableEXT",
+    "func_va": "0x16a0d38",
+    "string_va": "0xc2e05e"
+  },
+  {
+    "index": 382,
+    "name": "vkCmdSetDepthWriteEnableEXT",
+    "func_va": "0x1693400",
+    "string_va": "0xc2e079"
+  },
+  {
+    "index": 383,
+    "name": "vkCmdSetDepthCompareOpEXT",
+    "func_va": "0x1693408",
+    "string_va": "0xc2e095"
+  },
+  {
+    "index": 384,
+    "name": "vkCmdSetDepthBoundsTestEnableEXT",
+    "func_va": "0x160b7c8",
+    "string_va": "0xc2e0af"
+  },
+  {
+    "index": 385,
+    "name": "vkCmdSetStencilTestEnableEXT",
+    "func_va": "0x160b860",
+    "string_va": "0xc2e0d0"
+  },
+  {
+    "index": 386,
+    "name": "vkCmdSetStencilOpEXT",
+    "func_va": "0x167c43c",
+    "string_va": "0xc2e0ed"
+  },
+  {
+    "index": 387,
+    "name": "vkCmdSetFragmentShadingRateKHR",
+    "func_va": "0x1661bfc",
+    "string_va": "0xc2cf2b"
+  },
+  {
+    "index": 388,
+    "name": "vkGetPhysicalDeviceFragmentShadingRatesKHR",
+    "func_va": "0x16c2610",
+    "string_va": "0xc2cf4a"
+  },
+  {
+    "index": 389,
+    "name": "vkCreatePrivateDataSlot",
+    "func_va": "0x160b13c",
+    "string_va": "0xc2c6f6"
+  },
+  {
+    "index": 390,
+    "name": "vkDestroyPrivateDataSlot",
+    "func_va": "0x160b160",
+    "string_va": "0xc2c70e"
+  },
+  {
+    "index": 391,
+    "name": "vkSetPrivateData",
+    "func_va": "0x1661d50",
+    "string_va": "0xc2c727"
+  },
+  {
+    "index": 392,
+    "name": "vkGetPrivateData",
+    "func_va": "0x1661d58",
+    "string_va": "0xc2c738"
+  },
+  {
+    "index": 393,
+    "name": "vkCreatePrivateDataSlotEXT",
+    "func_va": "0x1661d60",
+    "string_va": "0xc2d9bf"
+  },
+  {
+    "index": 394,
+    "name": "vkDestroyPrivateDataSlotEXT",
+    "func_va": "0x1661d68",
+    "string_va": "0xc2d9da"
+  },
+  {
+    "index": 395,
+    "name": "vkSetPrivateDataEXT",
+    "func_va": "0x1661d70",
+    "string_va": "0xc2d9f6"
+  },
+  {
+    "index": 396,
+    "name": "vkGetPrivateDataEXT",
+    "func_va": "0x160b348",
+    "string_va": "0xc2da0a"
+  },
+  {
+    "index": 397,
+    "name": "vkGetDescriptorSetLayoutSizeEXT",
+    "func_va": "0x160b534",
+    "string_va": "0xc2e102"
+  },
+  {
+    "index": 398,
+    "name": "vkGetDescriptorSetLayoutBindingOffsetEXT",
+    "func_va": "0x160b5ec",
+    "string_va": "0xc2e122"
+  },
+  {
+    "index": 399,
+    "name": "vkGetDescriptorEXT",
+    "func_va": "0x16c26ec",
+    "string_va": "0xc2e14b"
+  },
+  {
+    "index": 400,
+    "name": "vkGetBufferOpaqueCaptureDescriptorDataEXT",
+    "func_va": "0x160b410",
+    "string_va": "0xc2e1cc"
+  },
+  {
+    "index": 401,
+    "name": "vkGetImageOpaqueCaptureDescriptorDataEXT",
+    "func_va": "0x1661e88",
+    "string_va": "0xc2e1f6"
+  },
+  {
+    "index": 402,
+    "name": "vkGetImageViewOpaqueCaptureDescriptorDataEXT",
+    "func_va": "0x1661ddc",
+    "string_va": "0xc2e21f"
+  },
+  {
+    "index": 403,
+    "name": "vkGetSamplerOpaqueCaptureDescriptorDataEXT",
+    "func_va": "0x160b188",
+    "string_va": "0xc2e24c"
+  },
+  {
+    "index": 404,
+    "name": "vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT",
+    "func_va": "0x1661cc0",
+    "string_va": "0xc2e277"
+  },
+  {
+    "index": 405,
+    "name": "vkCmdBindDescriptorBuffersEXT",
+    "func_va": "0x16c6c2c",
+    "string_va": "0xc2e15e"
+  },
+  {
+    "index": 406,
+    "name": "vkCmdSetDescriptorBufferOffsetsEXT",
+    "func_va": "0x1661d78",
+    "string_va": "0xc2e17c"
+  },
+  {
+    "index": 407,
+    "name": "vkCmdBindDescriptorBufferEmbeddedSamplersEXT",
+    "func_va": "0x160b28c",
+    "string_va": "0xc2e19f"
+  },
+  {
+    "index": 408,
+    "name": "vkCmdSetRenderingAttachmentLocations",
+    "func_va": "0x16c6c90",
+    "string_va": "0xc2c9f0"
+  },
+  {
+    "index": 409,
+    "name": "vkCmdSetRenderingInputAttachmentIndices",
+    "func_va": "0x160b6ac",
+    "string_va": "0xc2ca15"
+  },
+  {
+    "index": 410,
+    "name": "vkCmdSetRenderingAttachmentLocationsKHR",
+    "func_va": "0x160b8c0",
+    "string_va": "0xc2ea55"
+  },
+  {
+    "index": 411,
+    "name": "vkCmdSetRenderingInputAttachmentIndicesKHR",
+    "func_va": "0x160b8c8",
+    "string_va": "0xc2ea7d"
+  },
+  {
+    "index": 412,
+    "name": "vkCmdSetColorWriteEnableEXT",
+    "func_va": "0x160b9d4",
+    "string_va": "0xc2e2b0"
+  },
+  {
+    "index": 413,
+    "name": "vkCmdSetRasterizerDiscardEnable",
+    "func_va": "0x160b9dc",
+    "string_va": "0xc2c69f"
+  },
+  {
+    "index": 414,
+    "name": "vkCmdSetPrimitiveRestartEnable",
+    "func_va": "0x160ba68",
+    "string_va": "0xc2c6bf"
+  },
+  {
+    "index": 415,
+    "name": "vkCmdSetDepthBiasEnable",
+    "func_va": "0x169e8cc",
+    "string_va": "0xc2c6de"
+  },
+  {
+    "index": 416,
+    "name": "vkCmdSetLogicOpEXT",
+    "func_va": "0x160ba70",
+    "string_va": "0xc2e32c"
+  },
+  {
+    "index": 417,
+    "name": "vkCmdSetPatchControlPointsEXT",
+    "func_va": "0x160baa4",
+    "string_va": "0xc2e33f"
+  },
+  {
+    "index": 418,
+    "name": "vkCmdSetRasterizerDiscardEnableEXT",
+    "func_va": "0x160baac",
+    "string_va": "0xc2e2cc"
+  },
+  {
+    "index": 419,
+    "name": "vkCmdSetPrimitiveRestartEnableEXT",
+    "func_va": "0x160bab4",
+    "string_va": "0xc2e2ef"
+  },
+  {
+    "index": 420,
+    "name": "vkCmdSetDepthBiasEnableEXT",
+    "func_va": "0x160baec",
+    "string_va": "0xc2e311"
+  },
+  {
+    "index": 421,
+    "name": "vkCmdBlitImage2",
+    "func_va": "0x160bb18",
+    "string_va": "0xc2c749"
+  },
+  {
+    "index": 422,
+    "name": "vkCmdCopyBuffer2",
+    "func_va": "0x160bb54",
+    "string_va": "0xc2c759"
+  },
+  {
+    "index": 423,
+    "name": "vkCmdCopyBufferToImage2",
+    "func_va": "0x160bb70",
+    "string_va": "0xc2c76a"
+  },
+  {
+    "index": 424,
+    "name": "vkCmdCopyImage2",
+    "func_va": "0x160bc50",
+    "string_va": "0xc2c782"
+  },
+  {
+    "index": 425,
+    "name": "vkCmdCopyImageToBuffer2",
+    "func_va": "0x160bc58",
+    "string_va": "0xc2c792"
+  },
+  {
+    "index": 426,
+    "name": "vkCmdResolveImage2",
+    "func_va": "0x160bc84",
+    "string_va": "0xc2c7aa"
+  },
+  {
+    "index": 427,
+    "name": "vkCmdBlitImage2KHR",
+    "func_va": "0x160bcbc",
+    "string_va": "0xc2e35d"
+  },
+  {
+    "index": 428,
+    "name": "vkCmdCopyBuffer2KHR",
+    "func_va": "0x160bcdc",
+    "string_va": "0xc2e370"
+  },
+  {
+    "index": 429,
+    "name": "vkCmdCopyBufferToImage2KHR",
+    "func_va": "0x160bd14",
+    "string_va": "0xc2e384"
+  },
+  {
+    "index": 430,
+    "name": "vkCmdCopyImage2KHR",
+    "func_va": "0x160bd4c",
+    "string_va": "0xc2e39f"
+  },
+  {
+    "index": 431,
+    "name": "vkCmdCopyImageToBuffer2KHR",
+    "func_va": "0x1654134",
+    "string_va": "0xc2e3b2"
+  },
+  {
+    "index": 432,
+    "name": "vkCmdResolveImage2KHR",
+    "func_va": "0x1654160",
+    "string_va": "0xc2e3cd"
+  },
+  {
+    "index": 433,
+    "name": "vkCmdPushDescriptorSet",
+    "func_va": "0x1654178",
+    "string_va": "0xc2c94d"
+  },
+  {
+    "index": 434,
+    "name": "vkCmdPushDescriptorSetWithTemplate",
+    "func_va": "0x160be00",
+    "string_va": "0xc2c964"
+  },
+  {
+    "index": 435,
+    "name": "vkCmdPushDescriptorSetKHR",
+    "func_va": "0x160be2c",
+    "string_va": "0xc2e3e3"
+  },
+  {
+    "index": 436,
+    "name": "vkCmdPushDescriptorSetWithTemplateKHR",
+    "func_va": "0x160bfc0",
+    "string_va": "0xc2e3fd"
+  },
+  {
+    "index": 437,
+    "name": "vkGetDeviceBufferMemoryRequirements",
+    "func_va": "0x165450c",
+    "string_va": "0xc2c7e3"
+  },
+  {
+    "index": 438,
+    "name": "vkGetDeviceImageMemoryRequirements",
+    "func_va": "0x1654520",
+    "string_va": "0xc2c807"
+  },
+  {
+    "index": 439,
+    "name": "vkGetDeviceImageSparseMemoryRequirements",
+    "func_va": "0x1654550",
+    "string_va": "0xc2c82a"
+  },
+  {
+    "index": 440,
+    "name": "vkGetDeviceBufferMemoryRequirementsKHR",
+    "func_va": "0x165455c",
+    "string_va": "0xc2e423"
+  },
+  {
+    "index": 441,
+    "name": "vkGetDeviceImageMemoryRequirementsKHR",
+    "func_va": "0x1654570",
+    "string_va": "0xc2e44a"
+  },
+  {
+    "index": 442,
+    "name": "vkGetDeviceImageSparseMemoryRequirementsKHR",
+    "func_va": "0x160bfd0",
+    "string_va": "0xc2e470"
+  },
+  {
+    "index": 443,
+    "name": "vkCmdDrawMeshTasksEXT",
+    "func_va": "0x160c0fc",
+    "string_va": "0xc2e5fd"
+  },
+  {
+    "index": 444,
+    "name": "vkCmdDrawMeshTasksIndirectEXT",
+    "func_va": "0x160c134",
+    "string_va": "0xc2e613"
+  },
+  {
+    "index": 445,
+    "name": "vkCmdDrawMeshTasksIndirectCountEXT",
+    "func_va": "0x160c168",
+    "string_va": "0xc2e631"
+  },
+  {
+    "index": 446,
+    "name": "vkGetImageDrmFormatModifierPropertiesEXT",
+    "func_va": "0x160c1ac",
+    "string_va": "0xc2e66c"
+  },
+  {
+    "index": 447,
+    "name": "vkGetShaderModuleIdentifierEXT",
+    "func_va": "0x160c1f0",
+    "string_va": "0xc2e695"
+  },
+  {
+    "index": 448,
+    "name": "vkGetShaderModuleCreateInfoIdentifierEXT",
+    "func_va": "0x160c214",
+    "string_va": "0xc2e6b4"
+  },
+  {
+    "index": 449,
+    "name": "vkCmdSetTessellationDomainOriginEXT",
+    "func_va": "0x160c238",
+    "string_va": "0xc2e6dd"
+  },
+  {
+    "index": 450,
+    "name": "vkCmdSetDepthClampEnableEXT",
+    "func_va": "0x160c250",
+    "string_va": "0xc2e701"
+  },
+  {
+    "index": 451,
+    "name": "vkCmdSetPolygonModeEXT",
+    "func_va": "0x160c268",
+    "string_va": "0xc2e71d"
+  },
+  {
+    "index": 452,
+    "name": "vkCmdSetRasterizationSamplesEXT",
+    "func_va": "0x160c288",
+    "string_va": "0xc2e734"
+  },
+  {
+    "index": 453,
+    "name": "vkCmdSetSampleMaskEXT",
+    "func_va": "0x160c2a8",
+    "string_va": "0xc2e754"
+  },
+  {
+    "index": 454,
+    "name": "vkCmdSetAlphaToCoverageEnableEXT",
+    "func_va": null,
+    "string_va": "0xc2e76a"
+  },
+  {
+    "index": 455,
+    "name": "vkCmdSetAlphaToOneEnableEXT",
+    "func_va": null,
+    "string_va": "0xc2e78b"
+  },
+  {
+    "index": 456,
+    "name": "vkCmdSetLogicOpEnableEXT",
+    "func_va": "0x160c2c8",
+    "string_va": "0xc2e7a7"
+  },
+  {
+    "index": 457,
+    "name": "vkCmdSetColorBlendEnableEXT",
+    "func_va": "0x160c2e8",
+    "string_va": "0xc2e7c0"
+  },
+  {
+    "index": 458,
+    "name": "vkCmdSetColorBlendEquationEXT",
+    "func_va": "0x16620c0",
+    "string_va": "0xc2e7dc"
+  },
+  {
+    "index": 459,
+    "name": "vkCmdSetColorWriteMaskEXT",
+    "func_va": "0x1662198",
+    "string_va": "0xc2e7fa"
+  },
+  {
+    "index": 460,
+    "name": "vkCmdSetRasterizationStreamEXT",
+    "func_va": "0x16621a0",
+    "string_va": "0xc2e814"
+  },
+  {
+    "index": 461,
+    "name": "vkCmdSetConservativeRasterizationModeEXT",
+    "func_va": "0x168a7c8",
+    "string_va": "0xc2e833"
+  },
+  {
+    "index": 462,
+    "name": "vkCmdSetExtraPrimitiveOverestimationSizeEXT",
+    "func_va": "0x168a86c",
+    "string_va": "0xc2e85c"
+  },
+  {
+    "index": 463,
+    "name": "vkCmdSetDepthClipEnableEXT",
+    "func_va": "0x1660a2c",
+    "string_va": "0xc2e888"
+  },
+  {
+    "index": 464,
+    "name": "vkCmdSetSampleLocationsEnableEXT",
+    "func_va": "0x160a04c",
+    "string_va": "0xc2e8a3"
+  },
+  {
+    "index": 465,
+    "name": "vkCmdSetColorBlendAdvancedEXT",
+    "func_va": "0x1609fcc",
+    "string_va": "0xc2e8c4"
+  },
+  {
+    "index": 466,
+    "name": "vkCmdSetProvokingVertexModeEXT",
+    "func_va": "0x160ab04",
+    "string_va": "0xc2e8e2"
+  },
+  {
+    "index": 467,
+    "name": "vkCmdSetLineRasterizationModeEXT",
+    "func_va": "0x160bfc8",
+    "string_va": "0xc2e901"
+  },
+  {
+    "index": 468,
+    "name": "vkCmdSetLineStippleEnableEXT",
+    "func_va": "0x160bfb8",
+    "string_va": "0xc2e922"
+  },
+  {
+    "index": 469,
+    "name": "vkCmdSetDepthClipNegativeOneToOneEXT",
+    "func_va": "0x160c2d8",
+    "string_va": "0xc2e93f"
+  },
+  {
+    "index": 470,
+    "name": "vkCmdSetVertexInputEXT",
+    "func_va": "0x160c2f8",
+    "string_va": "0xc2e980"
+  },
+  {
+    "index": 471,
+    "name": "vkGetRenderingAreaGranularity",
+    "func_va": "0x160b6c0",
+    "string_va": "0xc2c919"
+  },
+  {
+    "index": 472,
+    "name": "vkGetDeviceImageSubresourceLayout",
+    "func_va": "0x160a300",
+    "string_va": "0xc2c8da"
+  },
+  {
+    "index": 473,
+    "name": "vkGetImageSubresourceLayout2",
+    "func_va": "0x160a3a0",
+    "string_va": "0xc2c8fc"
+  },
+  {
+    "index": 474,
+    "name": "vkCmdBindIndexBuffer2",
+    "func_va": "0x160a450",
+    "string_va": "0xc2c937"
+  },
+  {
+    "index": 475,
+    "name": "vkGetRenderingAreaGranularityKHR",
+    "func_va": "0x166223c",
+    "string_va": "0xc2e4e1"
+  },
+  {
+    "index": 476,
+    "name": "vkGetDeviceImageSubresourceLayoutKHR",
+    "func_va": "0x168a93c",
+    "string_va": "0xc2e49c"
+  },
+  {
+    "index": 477,
+    "name": "vkGetImageSubresourceLayout2KHR",
+    "func_va": "0x16a4f70",
+    "string_va": "0xc2e4c1"
+  },
+  {
+    "index": 478,
+    "name": "vkGetImageSubresourceLayout2EXT",
+    "func_va": "0x16a4f84",
+    "string_va": "0xc2eb2f"
+  },
+  {
+    "index": 479,
+    "name": "vkCmdBindIndexBuffer2KHR",
+    "func_va": "0x160c308",
+    "string_va": "0xc2e502"
+  },
+  {
+    "index": 480,
+    "name": "vkCmdBindDescriptorBufferEmbeddedSamplers2EXT",
+    "func_va": "0x160c350",
+    "string_va": "0xc2e54e"
+  },
+  {
+    "index": 481,
+    "name": "vkCmdSetDescriptorBufferOffsets2EXT",
+    "func_va": "0x160c3a4",
+    "string_va": "0xc2e57c"
+  },
+  {
+    "index": 482,
+    "name": "vkCmdBindDescriptorSets2",
+    "func_va": "0x160c3e8",
+    "string_va": "0xc2c987"
+  },
+  {
+    "index": 483,
+    "name": "vkCmdPushConstants2",
+    "func_va": "0x160c420",
+    "string_va": "0xc2c9a0"
+  },
+  {
+    "index": 484,
+    "name": "vkCmdPushDescriptorSet2",
+    "func_va": "0x160c444",
+    "string_va": "0xc2c9b4"
+  },
+  {
+    "index": 485,
+    "name": "vkCmdPushDescriptorSetWithTemplate2",
+    "func_va": "0x160c47c",
+    "string_va": "0xc2c9cc"
+  },
+  {
+    "index": 486,
+    "name": "vkCmdBindDescriptorSets2KHR",
+    "func_va": "0x160c4a0",
+    "string_va": "0xc2e51b"
+  },
+  {
+    "index": 487,
+    "name": "vkCmdPushConstants2KHR",
+    "func_va": "0x160c4f8",
+    "string_va": "0xc2e537"
+  },
+  {
+    "index": 488,
+    "name": "vkCmdPushDescriptorSet2KHR",
+    "func_va": "0x160c564",
+    "string_va": "0xc2e5a0"
+  },
+  {
+    "index": 489,
+    "name": "vkCmdPushDescriptorSetWithTemplate2KHR",
+    "func_va": "0x160c56c",
+    "string_va": "0xc2e5bb"
+  },
+  {
+    "index": 490,
+    "name": "vkCreateTexelMaskImageViewEXT",
+    "func_va": "0x160c5d4",
+    "string_va": "0xc2e997"
+  },
+  {
+    "index": 491,
+    "name": "vkCmdResolveTexelMaskImageEXT",
+    "func_va": "0x160c5f8",
+    "string_va": "0xc2e9b5"
+  },
+  {
+    "index": 492,
+    "name": "vkCmdDispatchInterleavedSEC",
+    "func_va": "0x160c668",
+    "string_va": "0xc2e9f5"
+  },
+  {
+    "index": 493,
+    "name": "vkCmdDispatchIndirectInterleavedSEC",
+    "func_va": "0x160c66c",
+    "string_va": "0xc2ea11"
+  },
+  {
+    "index": 494,
+    "name": "vkCmdDispatchBaseInterleavedSEC",
+    "func_va": "0x160c6ac",
+    "string_va": "0xc2ea35"
+  },
+  {
+    "index": 495,
+    "name": "vkCreatePipelineBinariesKHR",
+    "func_va": "0x160c6cc",
+    "string_va": "0xc2eaa8"
+  },
+  {
+    "index": 496,
+    "name": "vkDestroyPipelineBinaryKHR",
+    "func_va": "0x160c6d0",
+    "string_va": "0xc2eac4"
+  },
+  {
+    "index": 497,
+    "name": "vkGetPipelineKeyKHR",
+    "func_va": "0x160c6fc",
+    "string_va": "0xc2eadf"
+  },
+  {
+    "index": 498,
+    "name": "vkGetPipelineBinaryDataKHR",
+    "func_va": "0x160c740",
+    "string_va": "0xc2eaf3"
+  },
+  {
+    "index": 499,
+    "name": "vkReleaseCapturedPipelineDataKHR",
+    "func_va": "0x160c768",
+    "string_va": "0xc2eb0e"
+  },
+  {
+    "index": 500,
+    "name": "vkCopyImageToImage",
+    "func_va": "0x162b6d0",
+    "string_va": "0xc2ca3d"
+  },
+  {
+    "index": 501,
+    "name": "vkCopyImageToMemory",
+    "func_va": "0x160c7ac",
+    "string_va": "0xc2ca50"
+  },
+  {
+    "index": 502,
+    "name": "vkCopyMemoryToImage",
+    "func_va": "0x1662414",
+    "string_va": "0xc2ca64"
+  },
+  {
+    "index": 503,
+    "name": "vkTransitionImageLayout",
+    "func_va": "0x160c7c0",
+    "string_va": "0xc2ca78"
+  },
+  {
+    "index": 504,
+    "name": "vkCopyImageToImageEXT",
+    "func_va": "0x16931f8",
+    "string_va": "0xc2eb4f"
+  },
+  {
+    "index": 505,
+    "name": "vkCopyImageToMemoryEXT",
+    "func_va": "0x16932c0",
+    "string_va": "0xc2eb65"
+  },
+  {
+    "index": 506,
+    "name": "vkCopyMemoryToImageEXT",
+    "func_va": null,
+    "string_va": "0xc2eb7c"
+  },
+  {
+    "index": 507,
+    "name": "vkTransitionImageLayoutEXT",
+    "func_va": "0x160c7c8",
+    "string_va": "0xc2eb93"
+  },
+  {
+    "index": 510,
+    "name": "b!pH3rc!rH3rb!pH1rc!qH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!`H3r{!pH\u0003rc!73ra!pH1rc!rH3ra!pH1rc!pH3ra!pH2rc!rH3rb!pH1rc!qH3ra!pH1rc!rH3rpH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH7rc!uH3re!pH;rc!IH3r_!pH\u000erc!NH3r&!pHZrc!\u0004H3r\u0016!pHrc!H3r!pHrc!H3r!pHrc!H3rd pH:sc!pH3rc!pH3rc!pH3rc!pH3rc!pfZ\u001c\nU/)A",
+    "func_va": "0x160c7b4",
+    "string_va": "0x2c940fc"
+  },
+  {
+    "index": 512,
+    "name": "!pH1rc!qH3rc!pH1rc!qH3ra!pH2rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH#rc!hH3rS!pH\rc!rH3ra!pH1rc!rH3ra!pH3rc!rH3rb!pH1rc!qH3ra!pH2rc!rH3ra!pH1rc!3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rg!pH6rc!vH3rk!pH\nrc!LH3r^!pH\rrc!5H3r\n!pHGrc!\u0005H3r!pHrc!H3r!pHrc!H3r!pHrc!wI3rj pH3rc!pH3rc!pH3rc!pH3rc!pH3\\\nO\u0019<l\u0013\u0011S\u001113\\\u0005H\u001e!l\u0013\u0011S\u001113\\\u0017D\b<3\\\u0004N\u0004H\u001d\u001c\fU\u0015fR\u001c\u0007S\u001f!W\\\nE\u0015&GrMF\u001f<\u001d\u0002\u000fUpfA\u0017\u000f@^8_\u0006c\u000f\u0012;@rME\t&@\u0006\u0011!^-[-\u0005S\u0011%V-\u000bE\u0002H\u001d\u0015\rT^>V",
+    "func_va": "0x1662538",
+    "string_va": "0x2c940f4"
+  },
+  {
+    "index": 518,
+    "name": "S!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH\u0003rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!rH3ra!pH1rc!rH3ra!pH\u001c\u0001\u0007B\u0011:Wrc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!qI2sa!pH1rc!rH3ra!pH1rc!p.V\u0013\u0017T\u0002-`\u0006\u0002U\u0015fP\u0014\u0004!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc pH1rc!rH3ra!pH2rc!sH3re!pH2rc!rH3ra!pH1rc!rH3rb pH1rc!rH3rb!qH1rc!rH3ra!pH3rc!rH3rb!pH0rc!rH3ra!pH2rc!p-oc!pH1rc!pH3ra!pH1rc!rH3rb!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH7rc!xH3rc&pH1rc!xH3rc#pH3rc!qH3r\u0007!pHWrc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3rb!pHrc!rH3rb!pH3rc!rH3rb!pH1rc!qH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!rH3ra!pH1rc!`H3r{!pH\u0003rc!73ra!pH1rc!rH3ra!pH1rc!pH3ra!pH2rc!rH3rb!pH1rc!qH3ra!pH1rc!rH3rpH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH7rc!uH3re!pH;rc!IH3r_!pH\u000erc!NH3r&!pHZrc!\u0004H3r\u0016!pHrc!H3r!pHrc!H3r!pHrc!H3rd pH:sc!pH3rc!pH3rc!pH3rc!pH3rc!pfZ\u001c\nU/)A",
+    "func_va": "0x168ab78",
+    "string_va": "0x2c935b0"
+  },
+  {
+    "index": 520,
+    "name": "b!pH1rc!qH3ra!pH2rc!rH3ra!pH1rc!3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rc!pH3rg!pH6rc!vH3rk!pH\nrc!LH3r^!pH\rrc!5H3r\n!pHGrc!\u0005H3r!pHrc!H3r!pHrc!H3r!pHrc!wI3rj pH3rc!pH3rc!pH3rc!pH3rc!pH3\\\nO\u0019<l\u0013\u0011S\u001113\\\u0005H\u001e!l\u0013\u0011S\u001113\\\u0017D\b<3\\\u0004N\u0004H\u001d\u001c\fU\u0015fR\u001c\u0007S\u001f!W\\\nE\u0015&GrMF\u001f<\u001d\u0002\u000fUpfA\u0017\u000f@^8_\u0006c\u000f\u0012;@rME\t&@\u0006\u0011!^-[-\u0005S\u0011%V-\u000bE\u0002H\u001d\u0015\rT^>V",
+    "func_va": "0x168cacc",
+    "string_va": "0x2c94178"
+  }
+]

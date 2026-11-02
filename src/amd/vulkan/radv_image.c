@@ -604,7 +604,7 @@ radv_patch_image_from_extra_info(struct radv_device *device, struct radv_image *
 
       if ((image->vk.external_handle_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) ||
           image->vk.wsi_legacy_scanout) {
-         image->planes[plane].surface.flags |= RADEON_SURF_SCANOUT | RADEON_SURF_DISABLE_DCC;
+         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED;
          image->planes[plane].surface.is_linear = true;
       }
 
@@ -774,10 +774,12 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
    if (image->vk.external_handle_types)
       flags |= RADEON_SURF_SHAREABLE;
 
-   if (is_ahb_or_scanout ||
-       (pdev->info.family == CHIP_ARIEL &&
-        (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))))
-      flags |= RADEON_SURF_DISABLE_DCC | (is_ahb_or_scanout ? RADEON_SURF_SCANOUT : 0);
+   if (is_ahb_or_scanout) {
+      flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED;
+   } else if (pdev->info.family == CHIP_ARIEL &&
+              (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
+      flags |= RADEON_SURF_DISABLE_DCC;
+   }
 
    if (alignment && alignment->maximumRequestedAlignment) {
       bool is_4k_capable;
@@ -1367,7 +1369,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
       if (create_info.no_metadata_planes || (pdev->info.gfx_level < GFX12 && plane_count > 1) ||
           (image->vk.external_handle_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) ||
           image->vk.wsi_legacy_scanout) {
-         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT;
+         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED;
          image->planes[plane].surface.is_linear = true;
       } else if (pdev->info.family == CHIP_ARIEL &&
                  (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
