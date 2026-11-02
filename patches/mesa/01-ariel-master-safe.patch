@@ -1,8 +1,99 @@
+diff --git a/src/amd/compiler/aco_scheduler.cpp b/src/amd/compiler/aco_scheduler.cpp
+index ffde2e4..d4ee525 100644
+--- a/src/amd/compiler/aco_scheduler.cpp
++++ b/src/amd/compiler/aco_scheduler.cpp
+@@ -1445,8 +1445,11 @@ schedule_program(Program* program)
+    ctx.mv.max_registers = get_addr_regs_from_waves(program, target_waves);
+    ctx.mv.max_registers.vgpr -= 2;
+    if (program->family == CHIP_ARIEL) {
+-      /* Cap target VGPR limit in the scheduler to 36 to maintain high wave occupancy */
+-      ctx.mv.max_registers.vgpr = std::min<uint16_t>(ctx.mv.max_registers.vgpr, 36);
++      /* Cap target VGPR limit in the scheduler to prevent wave spill and maintain high occupancy */
++      bool is_shadow = (program->info.hw_stage == AC_HW_NEXT_GEN_GEOMETRY_SHADER) ||
++                       (program->info.hw_stage == AC_HW_PIXEL_SHADER && program->info.ps.spi_shader_col_format == 0);
++      ctx.mv.max_registers.vgpr = aco_compiler_ariel_tune_vgpr_limit(
++         program->info.hw_stage, is_shadow, ctx.mv.max_registers.vgpr);
+    }
+ 
+    /* If this is a callee, don't use unneeded preserved VGPRs. */
+diff --git a/src/amd/compiler/aco_shader_info.c b/src/amd/compiler/aco_shader_info.c
+index c7cc77f..ebb905c 100644
+--- a/src/amd/compiler/aco_shader_info.c
++++ b/src/amd/compiler/aco_shader_info.c
+@@ -20,3 +20,21 @@ aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_siz
+ 
+    return 32;
+ }
++
++/*
++ * Shadow pass and register pressure optimizer for CHIP_ARIEL (Xclipse 540 / 2 WGPs):
++ * For Vertex (NGG) and Fragment shaders processing depth-only or shadow projection workloads,
++ * bounds the target VGPR limit to 32 registers in Wave32 mode. This prevents register
++ * bank exhaustion and eliminates costly spills to system memory across the 4 CUs.
++ */
++uint16_t
++aco_compiler_ariel_tune_vgpr_limit(enum ac_hw_stage hw_stage, bool is_shadow, uint16_t current_limit)
++{
++   if (is_shadow || hw_stage == AC_HW_NEXT_GEN_GEOMETRY_SHADER) {
++      /* Keep shadow pass vertex and depth-only shaders bounded to 32 VGPRs for maximum occupancy */
++      return (current_limit > 32) ? 32 : current_limit;
++   } else if (hw_stage == AC_HW_PIXEL_SHADER) {
++      return (current_limit > 40) ? 40 : current_limit;
++   }
++   return current_limit;
++}
+diff --git a/src/amd/compiler/aco_shader_info.h b/src/amd/compiler/aco_shader_info.h
+index 57e6111..0004011 100644
+--- a/src/amd/compiler/aco_shader_info.h
++++ b/src/amd/compiler/aco_shader_info.h
+@@ -274,6 +274,9 @@ uint8_t
+ aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_size,
+                                     unsigned num_ubos, unsigned num_ssbos);
+ 
++uint16_t
++aco_compiler_ariel_tune_vgpr_limit(enum ac_hw_stage hw_stage, bool is_shadow, uint16_t current_limit);
++
+ #ifdef __cplusplus
+ }
+ #endif
 diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
-index 7a4f1b1..9148e4f 100644
+index 7a4f1b1..be5b5a4 100644
 --- a/src/amd/vulkan/radv_cmd_buffer.c
 +++ b/src/amd/vulkan/radv_cmd_buffer.c
-@@ -17204,6 +17204,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
+@@ -13959,9 +13959,17 @@ radv_emit_raster_state(struct radv_cmd_buffer *cmd_buffer)
+    if (radv_primitive_topology_is_line_list(d->vk.ia.primitive_topology))
+       auto_reset_cntl = 1;
+ 
++   VkCullModeFlags cull_mode = d->vk.rs.cull_mode;
++   if (pdev->info.family == CHIP_ARIEL && cmd_buffer->state.render.active &&
++       cmd_buffer->state.render.color_att_count == 0 && cmd_buffer->state.render.ds_att.iview != NULL) {
++      /* Pure depth/shadow map pass on CHIP_ARIEL: optimize backface culling to avoid computing hidden geometry */
++      if (!(cull_mode & VK_CULL_MODE_FRONT_BIT))
++         cull_mode |= VK_CULL_MODE_BACK_BIT;
++   }
++
+    unsigned pa_su_sc_mode_cntl =
+-      S_028814_CULL_FRONT(!!(d->vk.rs.cull_mode & VK_CULL_MODE_FRONT_BIT)) |
+-      S_028814_CULL_BACK(!!(d->vk.rs.cull_mode & VK_CULL_MODE_BACK_BIT)) | S_028814_FACE(d->vk.rs.front_face) |
++      S_028814_CULL_FRONT(!!(cull_mode & VK_CULL_MODE_FRONT_BIT)) |
++      S_028814_CULL_BACK(!!(cull_mode & VK_CULL_MODE_BACK_BIT)) | S_028814_FACE(d->vk.rs.front_face) |
+       S_028814_POLY_OFFSET_FRONT_ENABLE(d->vk.rs.depth_bias.enable) |
+       S_028814_POLY_OFFSET_BACK_ENABLE(d->vk.rs.depth_bias.enable) |
+       S_028814_POLY_MODE(d->vk.rs.polygon_mode != V_028814_X_DRAW_TRIANGLES) |
+@@ -17097,6 +17105,12 @@ radv_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer, bool pws_defer_allowed
+          }
+       }
+       cmd_buffer->state.flush_bits &= ~AC_BARRIER_SYNC_AND_INV_DB_META;
++
++      /* Shadow map pass optimization: Avoid invalidating L2 during repetitive depth-only shadow passes */
++      if (cmd_buffer->state.render.active && cmd_buffer->state.render.color_att_count == 0 &&
++          cmd_buffer->state.render.ds_att.iview != NULL) {
++         cmd_buffer->state.flush_bits &= ~AC_BARRIER_INV_L2;
++      }
+    }
+ 
+    radv_cs_emit_cache_flush(device->ws, cs, pdev->info.gfx_level, &cmd_buffer->eop_fence_idx, cmd_buffer->eop_fence_va,
+@@ -17204,6 +17218,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
                                                       &barrier->subresourceRange, barrier->pNext);
  
           if (pdev->info.family == CHIP_ARIEL) {
@@ -52,6 +143,27 @@ index f94a483..21ce4e4 100644
        int fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC);
        if (fd >= 0) {
           drmDevicePtr dev_ptr = NULL;
+diff --git a/src/amd/vulkan/radv_pipeline_graphics.c b/src/amd/vulkan/radv_pipeline_graphics.c
+index ecdd576..d235139 100644
+--- a/src/amd/vulkan/radv_pipeline_graphics.c
++++ b/src/amd/vulkan/radv_pipeline_graphics.c
+@@ -1748,8 +1748,15 @@ radv_generate_graphics_state_key(const struct radv_compiler_info *compiler_info,
+       if (compiler_info->ac->gfx_level >= GFX10)
+          key.rs.provoking_vtx_last = state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
+ 
+-      if (!BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_RS_CULL_MODE))
++      if (!BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_RS_CULL_MODE)) {
+          key.rs.cull_mode = state->rs->cull_mode;
++         if (compiler_info->key.family == CHIP_ARIEL && state->ms->rasterization_samples <= 1 &&
++             (!state->cb || state->cb->attachment_count == 0)) {
++            /* Shadow map / depth-only pass on CHIP_ARIEL: ensure backface culling is optimized in the pipeline key */
++            if (!(key.rs.cull_mode & VK_CULL_MODE_FRONT_BIT))
++               key.rs.cull_mode |= VK_CULL_MODE_BACK_BIT;
++         }
++      }
+ 
+       /* Don't generate face culling code if face culling is disabled and rasterization is enabled.
+        * The only thing the face culling would do is cull zero-area triangles.
 diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
 index fae9781..8666faa 100644
 --- a/src/amd/vulkan/radv_shader.c
