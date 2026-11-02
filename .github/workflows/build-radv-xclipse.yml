@@ -73,7 +73,9 @@ jobs:
           meson setup build-android \
             --cross-file build-android/cross-android-aarch64.ini \
             -Dbuildtype=release \
+            -Db_ndebug=true \
             -Db_lto=true \
+            -Db_lto_mode=thin \
             -Dallow-broken-lto=true \
             -Dplatforms=android \
             -Dplatform-sdk-version=34 \
@@ -94,8 +96,8 @@ jobs:
             -Degl=disabled \
             -Dgles1=disabled \
             -Dgles2=disabled \
-            -Dc_args="-march=armv8.2-a" \
-            -Dcpp_args="-march=armv8.2-a" \
+            -Dc_args="-O3 -mcpu=cortex-a720 -mtune=cortex-a720 -fno-semantic-interposition -fomit-frame-pointer -ffast-math" \
+            -Dcpp_args="-O3 -mcpu=cortex-a720 -mtune=cortex-a720 -fno-semantic-interposition -fomit-frame-pointer -ffast-math" \
             -Dallow-fallback-for=libdrm,perfetto \
             --force-fallback-for=expat,libdrm,zlib \
             -Dlibdrm:default_library=static \
@@ -153,11 +155,12 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.1-blackscreen-fix' }}
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.1-blackscreen-fix' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.2.0-performance-boost' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.2.0-performance-boost' }}"
           files: |
             Custom_RADV_Xclipse540.zip
             patches/mesa/01-ariel-ahb-disable-dcc-scanout.patch
             patches/mesa/02-ariel-selinux-renderd128-and-nohiz.patch
             patches/mesa/03-ariel-android-wsi-sync.patch
+            patches/mesa/04-ariel-full-performance-optimizations.patch
           generate_release_notes: true

@@ -329,6 +329,7 @@ struct radv_cmd_state {
    enum ac_barrier_flags flush_bits;
    /* Earliest PWS acquire point required by the currently pending flush_bits*/
    enum ac_pws_acquire_point pws_acquire_point;
+   bool has_depth_aspect_barrier;
 
    /* BCn decode: defer the post-decode cache flush across copy commands (each copy has one region,
     * so per-command batching gains nothing).

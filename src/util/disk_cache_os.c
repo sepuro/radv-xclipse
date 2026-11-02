@@ -1031,6 +1031,26 @@ disk_cache_generate_cache_dir(void *mem_ctx, const char *gpu_name,
          if (!path)
             return NULL;
       }
+#if defined(ANDROID) || defined(__ANDROID__)
+      else {
+         FILE *f = fopen("/proc/self/cmdline", "r");
+         if (f) {
+            char pkg[256] = {0};
+            if (fgets(pkg, sizeof(pkg), f)) {
+               char *colon = strchr(pkg, ':');
+               if (colon)
+                  *colon = '\0';
+               pkg[strcspn(pkg, "\r\n")] = '\0';
+               if (pkg[0]) {
+                  char app_cache_dir[512];
+                  snprintf(app_cache_dir, sizeof(app_cache_dir), "/data/data/%s/cache", pkg);
+                  path = concatenate_and_mkdir(mem_ctx, app_cache_dir, cache_dir_name, mkdir);
+               }
+            }
+            fclose(f);
+         }
+      }
+#endif
    }
 
    if (!path) {

@@ -6,6 +6,8 @@
  */
 
 #include <assert.h>
+#include <sys/ioctl.h>
+#include <xf86drm.h>
 #include "ac_xclipse_log.h"
 #include <libsync.h>
 #include <pthread.h>
@@ -1639,6 +1641,15 @@ radv_amdgpu_winsys_cs_annotate(struct ac_cmdbuf *_cs, const char *annotation)
    }
 }
 
+#ifndef DRM_IOCTL_SGPU_DRIVER_CONTROL
+#define DRM_IOCTL_SGPU_DRIVER_CONTROL _IOWR('d', 0x40 + 0x5b, struct sgpu_driver_control)
+struct sgpu_driver_control {
+   uint32_t cmd;
+   uint32_t pad;
+   uint64_t val;
+};
+#endif
+
 static VkResult
 radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority priority, struct radeon_winsys_ctx **rctx)
 {
@@ -1651,7 +1662,18 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
    if (!ctx)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   r = ac_drm_cs_ctx_create2(ws->dev, amdgpu_priority, &ctx->ctx_handle);
+   /* Elevate priority for 3D workloads on Samsung Xclipse / CHIP_ARIEL */
+   if ((ws->info.family == CHIP_ARIEL || ws->info.xclipse_model != AC_XCLIPSE_NONE) &&
+       priority == RADEON_CTX_PRIORITY_MEDIUM) {
+      r = ac_drm_cs_ctx_create2(ws->dev, AMDGPU_CTX_PRIORITY_HIGH, &ctx->ctx_handle);
+      if (r == 0)
+         amdgpu_priority = AMDGPU_CTX_PRIORITY_HIGH;
+      else
+         r = ac_drm_cs_ctx_create2(ws->dev, amdgpu_priority, &ctx->ctx_handle);
+   } else {
+      r = ac_drm_cs_ctx_create2(ws->dev, amdgpu_priority, &ctx->ctx_handle);
+   }
+
    if (r && r == -EACCES) {
       result = VK_ERROR_NOT_PERMITTED;
       goto fail_create;
@@ -1661,6 +1683,12 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
       goto fail_create;
    }
    ctx->ws = ws;
+
+   /* Samsung SGPU frequency/DVFS performance hint (0x5b): lock GPU frequency during 3D loads */
+   if (ws->info.family == CHIP_ARIEL || ws->info.xclipse_model != AC_XCLIPSE_NONE) {
+      struct sgpu_driver_control ctrl = { .cmd = 0, .pad = 0, .val = 1 };
+      ioctl(ws->fd, DRM_IOCTL_SGPU_DRIVER_CONTROL, &ctrl);
+   }
 
    assert(AMDGPU_HW_IP_NUM * MAX_RINGS_PER_TYPE * 4 * sizeof(uint64_t) <= 4096);
    result = ws->base.buffer_create(&ws->base, 4096, 8, RADEON_DOMAIN_GTT,

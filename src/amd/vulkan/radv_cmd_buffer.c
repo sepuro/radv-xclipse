@@ -8329,14 +8329,19 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 
    }
 
    if (src_flags & VK_ACCESS_2_TRANSFER_WRITE_BIT) {
-      flush_bits |= AC_BARRIER_SYNC_AND_INV_CB | AC_BARRIER_SYNC_AND_INV_DB;
+      if (!image || (image->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
+         flush_bits |= AC_BARRIER_SYNC_AND_INV_DB;
+         if (pdev->info.gfx_level < GFX10 && has_DB_meta)
+            flush_bits |= AC_BARRIER_SYNC_AND_INV_DB_META;
+      }
+      if (!image || (image->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)) {
+         flush_bits |= AC_BARRIER_SYNC_AND_INV_CB;
+         if (has_CB_meta)
+            flush_bits |= AC_BARRIER_SYNC_AND_INV_CB_META;
+      }
 
       if (!image_is_coherent)
          flush_bits |= AC_BARRIER_INV_L2;
-      if (has_CB_meta)
-         flush_bits |= AC_BARRIER_SYNC_AND_INV_CB_META;
-      if (pdev->info.gfx_level < GFX10 && has_DB_meta)
-         flush_bits |= AC_BARRIER_SYNC_AND_INV_DB_META;
    }
 
    return flush_bits;
@@ -17076,12 +17081,21 @@ radv_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer, bool pws_defer_allowed
       pws_acquire_point = AC_PWS_ACQUIRE_POINT_ME;
 
    /* Xclipse / CHIP_ARIEL: flush DB only through CACHE_FLUSH_AND_INV_TS, as the vendor does.
-    * Never emit standalone FLUSH_AND_INV_DB_META to prevent VOYAGERSW-1566 hardware hang. */
+    * Never emit standalone FLUSH_AND_INV_DB_META to prevent VOYAGERSW-1566 hardware hang.
+    * Restrict Combined Depth Cache Flush exclusively to barriers involving depth/stencil aspects
+    * or active depth/stencil attachments, avoiding flushing caches on color-only or compute passes. */
    if (ac_xclipse_full_db_flush(&pdev->info) || pdev->info.family == CHIP_ARIEL ||
        pdev->info.xclipse_model == AC_XCLIPSE_540) {
       if ((cmd_buffer->state.flush_bits & (AC_BARRIER_SYNC_AND_INV_DB | AC_BARRIER_SYNC_AND_INV_CB)) ==
-             AC_BARRIER_SYNC_AND_INV_DB)
-         cmd_buffer->state.flush_bits |= AC_BARRIER_SYNC_AND_INV_CB;
+             AC_BARRIER_SYNC_AND_INV_DB) {
+         if (cmd_buffer->state.has_depth_aspect_barrier ||
+             (cmd_buffer->state.render.active && cmd_buffer->state.render.ds_att.iview != NULL)) {
+            cmd_buffer->state.flush_bits |= AC_BARRIER_SYNC_AND_INV_CB;
+         } else {
+            /* Omit redundant DB flush for color-only or compute passes */
+            cmd_buffer->state.flush_bits &= ~AC_BARRIER_SYNC_AND_INV_DB;
+         }
+      }
       cmd_buffer->state.flush_bits &= ~AC_BARRIER_SYNC_AND_INV_DB_META;
    }
 
@@ -17101,6 +17115,7 @@ radv_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer, bool pws_defer_allowed
    cmd_buffer->active_query_flush_bits &= ~cmd_buffer->state.flush_bits;
 
    cmd_buffer->state.flush_bits = 0;
+   cmd_buffer->state.has_depth_aspect_barrier = false;
    cmd_buffer->state.pws_acquire_point = AC_PWS_ACQUIRE_POINT_NONE;
 
    /* If the driver used a compute shader for resetting a query pool, it
@@ -17176,6 +17191,9 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
       for (uint32_t i = 0; i < dep_info->imageMemoryBarrierCount; i++) {
          const VkImageMemoryBarrier2 *barrier = &dep_info->pImageMemoryBarriers[i];
          VK_FROM_HANDLE(radv_image, image, barrier->image);
+
+         if (barrier->subresourceRange.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+            cmd_buffer->state.has_depth_aspect_barrier = true;
 
          src_stage_mask |= barrier->srcStageMask;
          src_flush_bits |= radv_get_src_access_flush(cmd_buffer, barrier->srcStageMask, barrier->srcAccessMask, image,

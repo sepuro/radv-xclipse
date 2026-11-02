@@ -3113,15 +3113,11 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       pdev->emulate_bc && !radv_xclipse_flag_off("RADV_XCLIPSE_BC5_ALIAS", "radv_xclipse_bc5_alias");
    pdev->xclipse_bc7_alias =
       pdev->emulate_bc && !radv_xclipse_flag_off("RADV_XCLIPSE_BC7_ALIAS", "radv_xclipse_bc7_alias");
-   /* Xclipse: DCC on colour targets. On CHIP_ARIEL (Xclipse 540 / Exynos 1580), DCC must default to
-    * OFF to prevent black screen on display scanout / swapchain and untracked render targets,
-    * unless explicitly opted in with RADV_XCLIPSE_DCC=1 or debug.radv_xclipse_dcc 1. */
-   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
-      pdev->xclipse_dcc = radv_xclipse_flag("RADV_XCLIPSE_DCC", "radv_xclipse_dcc");
-   } else {
-      pdev->xclipse_dcc = pdev->info.gfx11_shader_core &&
-                          !radv_xclipse_flag_off("RADV_XCLIPSE_DCC", "radv_xclipse_dcc");
-   }
+   /* Xclipse: DCC on colour targets. On CHIP_ARIEL (Xclipse 540 / Exynos 1580), internal render targets
+    * use DCC and Fast Clear for maximum fillrate, while AHB/scanout is explicitly masked in radv_image.c. */
+   pdev->xclipse_dcc = (pdev->info.gfx11_shader_core || pdev->info.family == CHIP_ARIEL ||
+                        pdev->info.xclipse_model == AC_XCLIPSE_540) &&
+                       !radv_xclipse_flag_off("RADV_XCLIPSE_DCC", "radv_xclipse_dcc");
    pdev->xclipse_dcc_small =
       pdev->xclipse_dcc && !radv_xclipse_flag_off("RADV_XCLIPSE_DCC_SMALL", "radv_xclipse_dcc_small");
    pdev->xclipse_llc = pdev->info.xclipse_model == AC_XCLIPSE_960 &&
@@ -3253,6 +3249,15 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
          pdev->rt_wave_size = 32;
    }
 
+   /* Force Wave32 across all shader stages for CHIP_ARIEL (RDNA 3 mobile) to maximize SIMD occupancy */
+   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
+      pdev->ps_wave_size = 32;
+      pdev->cs_wave_size = 32;
+      pdev->ge_wave_size = 32;
+      pdev->rt_wave_size = 32;
+      pdev->use_ngg_culling = false;
+   }
+
    radv_probe_video_decode(pdev);
    radv_probe_video_encode(pdev);
 
@@ -3260,6 +3265,12 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
    radv_physical_device_get_supported_extensions(pdev, &pdev->vk.supported_extensions);
    radv_physical_device_get_features(pdev, &pdev->vk.supported_features);
+
+   /* Enable VK_EXT_graphics_pipeline_library (GPL) for CHIP_ARIEL for fast pipeline compiling */
+   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
+      pdev->vk.supported_extensions.EXT_graphics_pipeline_library = true;
+      pdev->vk.supported_features.graphicsPipelineLibrary = true;
+   }
 
    struct stat primary_stat = {0}, render_stat = {0};
 
