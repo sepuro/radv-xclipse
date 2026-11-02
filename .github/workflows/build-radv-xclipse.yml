@@ -1,0 +1,145 @@
+name: Build RADV Xclipse 540 (Android NDK API 34)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-xclipse540:
+    name: Build Mesa RADV (CHIP_ARIEL / Exynos 1580)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Host Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build \
+            bison \
+            flex \
+            glslang-tools \
+            pkg-config \
+            zip
+          python3 -m pip install --upgrade pip
+          pip install meson mako packaging pyyaml
+
+      - name: Set up Android NDK (r26b)
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+          add-to-path: true
+
+      - name: Generate Meson Cross-Compilation File
+        run: |
+          NDK_BIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          mkdir -p build-android
+
+          cat > build-android/cross-android-aarch64.ini <<CROSS_EOF
+          [binaries]
+          c = '${NDK_BIN}/aarch64-linux-android34-clang'
+          cpp = '${NDK_BIN}/aarch64-linux-android34-clang++'
+          ar = '${NDK_BIN}/llvm-ar'
+          strip = '${NDK_BIN}/llvm-strip'
+          pkg-config = 'pkg-config'
+
+          [built-in options]
+          cpp_link_args = ['-static-libstdc++']
+
+          [host_machine]
+          system = 'android'
+          cpu_family = 'aarch64'
+          cpu = 'aarch64'
+          endian = 'little'
+          CROSS_EOF
+
+      - name: Configure Meson Build
+        run: |
+          meson setup build-android \
+            --cross-file build-android/cross-android-aarch64.ini \
+            -Dbuildtype=release \
+            -Db_lto=true \
+            -Dallow-broken-lto=true \
+            -Dplatforms=android \
+            -Dplatform-sdk-version=34 \
+            -Dandroid-stub=true \
+            -Dandroid-strict=false \
+            -Dandroid-libbacktrace=disabled \
+            -Dvulkan-drivers=amd \
+            -Dgallium-drivers= \
+            -Dvulkan-layers= \
+            -Dtools= \
+            -Dllvm=disabled \
+            -Dzstd=disabled \
+            -Dlmsensors=disabled \
+            -Dperfetto=false \
+            -Dglx=disabled \
+            -Dgbm=disabled \
+            -Degl=disabled \
+            -Dgles1=disabled \
+            -Dgles2=disabled \
+            -Dc_args="-march=armv8.2-a" \
+            -Dcpp_args="-march=armv8.2-a" \
+            -Dallow-fallback-for=libdrm,perfetto \
+            --force-fallback-for=expat,libdrm,zlib \
+            -Dlibdrm:default_library=static \
+            -Dexpat:default_library=static \
+            -Dzlib:default_library=static
+
+      - name: Compile libvulkan_radeon.so with Ninja
+        run: |
+          ninja -C build-android src/amd/vulkan/libvulkan_radeon.so
+
+      - name: Strip Symbols and Package Driver for AdrenoTools
+        run: |
+          NDK_BIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          mkdir -p dist
+
+          "${NDK_BIN}/llvm-strip" --strip-all -o dist/vulkan.radeon.so build-android/src/amd/vulkan/libvulkan_radeon.so
+
+          MESA_VER=$(cat VERSION 2>/dev/null || echo "24.2.0-devel")
+
+          cat > dist/meta.json <<JSON_EOF
+          {
+            "schemaVersion": 1,
+            "name": "Custom RADV Xclipse 540 (Mesa ${MESA_VER})",
+            "description": "Mesa RADV custom Vulkan driver for Samsung Exynos 1580 (Xclipse 540 / CHIP_ARIEL)",
+            "author": "Antigravity & purwowd",
+            "packageVersion": "1.0",
+            "vendor": "Mesa/RADV",
+            "driverVersion": "Vulkan 1.3.275",
+            "minApi": 34,
+            "libraryName": "vulkan.radeon.so"
+          }
+          JSON_EOF
+
+          NOTICE_FILE="android/NOTICE.txt"
+          if [ ! -f "${NOTICE_FILE}" ]; then
+            NOTICE_FILE="LICENSE"
+          fi
+
+          python3 -c "
+          import zipfile
+          with zipfile.ZipFile('Custom_RADV_Xclipse540.zip', 'w', compression=zipfile.ZIP_DEFLATED) as z:
+              z.write('dist/meta.json', 'meta.json')
+              z.write('dist/vulkan.radeon.so', 'vulkan.radeon.so')
+              z.write('${NOTICE_FILE}', 'NOTICE.txt')
+          "
+
+      - name: Upload AdrenoTools Package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Custom_RADV_Xclipse540
+          path: Custom_RADV_Xclipse540.zip
+          retention-days: 30
