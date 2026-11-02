@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-xclipse540:
     name: Build Mesa RADV (CHIP_ARIEL / Exynos 1580)
@@ -144,3 +147,12 @@ jobs:
           name: Custom_RADV_Xclipse540
           path: Custom_RADV_Xclipse540.zip
           retention-days: 30
+
+      - name: Publish GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0-xclipse540
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) v1.0.0"
+          files: Custom_RADV_Xclipse540.zip
+          generate_release_notes: true
