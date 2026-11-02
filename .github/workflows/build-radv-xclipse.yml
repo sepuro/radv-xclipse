@@ -164,4 +164,5 @@ jobs:
             patches/mesa/03-ariel-android-wsi-sync.patch
             patches/mesa/04-ariel-full-performance-optimizations.patch
             patches/mesa/05-ariel-smart-thermal-and-fps-boost.patch
+            patches/mesa/06-ariel-fix-textures-and-stutter.patch
           generate_release_notes: true

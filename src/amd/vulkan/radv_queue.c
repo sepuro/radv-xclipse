@@ -990,11 +990,11 @@ radv_emit_graphics(struct radv_device *device, struct radv_cmd_stream *cs)
          0x0001ff7f, 0x0001ff7f, 0x0001ffff, 0xffffffff, 0xffffffff, 0xffffffff,
          0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
       };
-      for (unsigned i = 0; i < ARRAY_SIZE(mty); i++)
-         ac_pm4_set_reg(pm4, CIK_UCONFIG_REG_OFFSET + (0x480 + i) * 4, mty[i]);
+      for (unsigned k = 0; k < ARRAY_SIZE(mty); k++)
+         ac_pm4_set_reg(pm4, CIK_UCONFIG_REG_OFFSET + (0x480 + k) * 4, mty[k]);
       ac_pm4_set_reg(pm4, CIK_UCONFIG_REG_OFFSET + 0x493 * 4, 0x41); /* GL2ACEM_LLC_TEX */
-      for (unsigned i = 0; i < ARRAY_SIZE(tail); i++)
-         ac_pm4_set_reg(pm4, CIK_UCONFIG_REG_OFFSET + (0x494 + i) * 4, tail[i]);
+      for (unsigned k = 0; k < ARRAY_SIZE(tail); k++)
+         ac_pm4_set_reg(pm4, CIK_UCONFIG_REG_OFFSET + (0x494 + k) * 4, tail[k]);
       ac_pm4_set_reg(pm4, CIK_UCONFIG_REG_OFFSET + 0x4c0 * 4, 0x00080128); /* GL2C_CTRL5 */
    }
 

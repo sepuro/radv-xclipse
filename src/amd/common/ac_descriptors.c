@@ -565,7 +565,7 @@ ac_get_gfx10_img_format(const struct radeon_info *info, const enum amd_gfx_level
    const struct util_format_description *desc = util_format_description(state->format);
    uint32_t img_format = fmt->img_format;
 
-   if (info->gfx11_shader_core) {
+   if (info->gfx11_shader_core || info->family == CHIP_ARIEL) {
       const uint32_t astc = ac_xclipse_astc_img_format(state->format);
       if (astc)
          return astc;

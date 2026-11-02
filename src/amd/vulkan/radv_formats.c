@@ -426,12 +426,13 @@ radv_bc_emulation_format(VkFormat format)
    }
 }
 
-/* Xclipse 920 samples ASTC LDR with a hardware decoder (see ac_xclipse_astc_img_format). Only the
+/* Xclipse samples ASTC LDR with a hardware decoder (see ac_xclipse_astc_img_format). Only the
  * 28 contiguous LDR formats are native; HDR (ASTC_*_SFLOAT) stays unadvertised. */
 bool
 radv_xclipse_is_native_astc(const struct radv_physical_device *pdev, VkFormat format)
 {
-   return pdev->xclipse_native_astc && format >= VK_FORMAT_ASTC_4x4_UNORM_BLOCK &&
+   return (pdev->xclipse_native_astc || pdev->info.family == CHIP_ARIEL) &&
+          format >= VK_FORMAT_ASTC_4x4_UNORM_BLOCK &&
           format <= VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
 }
 
@@ -440,7 +441,8 @@ radv_xclipse_is_native_astc(const struct radv_physical_device *pdev, VkFormat fo
 bool
 radv_xclipse_is_native_etc2(const struct radv_physical_device *pdev, VkFormat format)
 {
-   return pdev->xclipse_native_etc2 && format >= VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK &&
+   return (pdev->xclipse_native_etc2 || pdev->info.family == CHIP_ARIEL) &&
+          format >= VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK &&
           format <= VK_FORMAT_EAC_R11G11_SNORM_BLOCK;
 }
 
@@ -453,7 +455,7 @@ radv_is_format_emulated(const struct radv_physical_device *pdev, VkFormat format
    if (pdev->emulate_astc && vk_texcompress_astc_emulation_format(format) != VK_FORMAT_UNDEFINED)
       return true;
 
-   if (pdev->emulate_bc && radv_bc_emulation_format(format) != VK_FORMAT_UNDEFINED)
+   if ((pdev->emulate_bc || pdev->info.family == CHIP_ARIEL) && radv_bc_emulation_format(format) != VK_FORMAT_UNDEFINED)
       return true;
 
    return false;

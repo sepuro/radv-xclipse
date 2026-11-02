@@ -566,8 +566,8 @@ radv_amdgpu_winsys_virtual_bo_destroy(struct radeon_winsys *_ws, struct radeon_w
  * Scope: RADEON_FLAG_XCLIPSE_CACHEABLE + NO_INTERPROCESS_SHARING only; never sparse, replayable,
  * imported or exported.
  */
-#define RADV_XCLIPSE_IBCACHE_BUCKETS 64
-#define RADV_XCLIPSE_IBCACHE_CAP (64ull << 20)
+#define RADV_XCLIPSE_IBCACHE_BUCKETS 256
+#define RADV_XCLIPSE_IBCACHE_CAP (256ull << 20)
 
 struct radv_xclipse_ibcache_entry {
    struct radv_amdgpu_winsys_bo *bo;
@@ -594,8 +594,11 @@ radv_xclipse_ibcache_cacheable(const struct radv_amdgpu_winsys_bo *bo)
    /* Shared BOs live in more than one VM. */
    if (!(bo->flags & RADEON_FLAG_NO_INTERPROCESS_SHARING))
       return false;
-   /* Only the classes tagged as cacheable. */
-   if (!(bo->flags & RADEON_FLAG_XCLIPSE_CACHEABLE))
+   /* Tagged as cacheable OR staging transfer buffer (CPU_ACCESS in GTT up to 16MB) */
+   bool is_staging = (bo->flags & RADEON_FLAG_CPU_ACCESS) &&
+                     (bo->base.initial_domain & RADEON_DOMAIN_GTT) &&
+                     bo->base.size <= (16ull << 20);
+   if (!(bo->flags & RADEON_FLAG_XCLIPSE_CACHEABLE) && !is_staging)
       return false;
    if (bo->flags & (RADEON_FLAG_VIRTUAL | RADEON_FLAG_REPLAYABLE))
       return false;
@@ -646,7 +649,12 @@ static struct radv_amdgpu_winsys_bo *
 radv_xclipse_ibcache_reuse(struct radv_amdgpu_winsys *ws, uint64_t size, unsigned alignment,
                            enum radeon_bo_domain domain, uint32_t flags)
 {
-   if (!(flags & RADEON_FLAG_XCLIPSE_CACHEABLE) || !(flags & RADEON_FLAG_NO_INTERPROCESS_SHARING))
+   bool is_staging = (flags & RADEON_FLAG_CPU_ACCESS) &&
+                     (domain & RADEON_DOMAIN_GTT) &&
+                     size <= (16ull << 20);
+   if (!(flags & RADEON_FLAG_XCLIPSE_CACHEABLE) && !is_staging)
+      return NULL;
+   if (!(flags & RADEON_FLAG_NO_INTERPROCESS_SHARING))
       return NULL;
 
    /* Normalise the domain like bo_create (VRAM->GTT): park() records the post-downgrade domain. */

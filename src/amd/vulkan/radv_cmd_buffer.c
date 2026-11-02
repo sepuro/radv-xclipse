@@ -8314,7 +8314,7 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 
 
    if (src_flags & VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT) {
       flush_bits |= AC_BARRIER_SYNC_AND_INV_CB;
-      if (!image_is_coherent)
+      if (!image_is_coherent || pdev->info.family == CHIP_ARIEL)
          flush_bits |= AC_BARRIER_INV_L2;
       if (has_CB_meta)
          flush_bits |= AC_BARRIER_SYNC_AND_INV_CB_META;
@@ -8340,7 +8340,7 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 
             flush_bits |= AC_BARRIER_SYNC_AND_INV_CB_META;
       }
 
-      if (!image_is_coherent)
+      if (!image_is_coherent || pdev->info.family == CHIP_ARIEL)
          flush_bits |= AC_BARRIER_INV_L2;
    }
 
@@ -8472,7 +8472,7 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags2 
       flush_bits |= AC_BARRIER_INV_VMEM;
       if (flush_L2_metadata)
          flush_bits |= AC_BARRIER_INV_L2_METADATA;
-      if (!image_is_coherent)
+      if (!image_is_coherent || (pdev->info.family == CHIP_ARIEL && (dst_flags & VK_ACCESS_2_SHADER_SAMPLED_READ_BIT)))
          flush_bits |= AC_BARRIER_INV_L2;
    }
 
@@ -17153,6 +17153,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
              enum rgp_barrier_reason reason)
 {
    struct radv_device *device = radv_cmd_buffer_device(cmd_buffer);
+   const struct radv_physical_device *pdev = radv_device_physical(device);
    struct radv_cmd_stream *cs = cmd_buffer->cs;
    enum ac_barrier_flags src_flush_bits = 0;
    enum ac_barrier_flags dst_flush_bits = 0;
@@ -17201,6 +17202,15 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
          dst_stage_mask |= barrier->dstStageMask;
          dst_flush_bits |= radv_get_dst_access_flush(cmd_buffer, barrier->dstStageMask, barrier->dstAccessMask, image,
                                                      &barrier->subresourceRange, barrier->pNext);
+
+         if (pdev->info.family == CHIP_ARIEL) {
+            if (((barrier->srcAccessMask & (VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)) ||
+                 barrier->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) &&
+                ((barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT)) ||
+                 barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)) {
+               dst_flush_bits |= AC_BARRIER_INV_VMEM | AC_BARRIER_INV_L2;
+            }
+         }
       }
 
       has_image_transitions |= dep_info->imageMemoryBarrierCount > 0;

@@ -340,6 +340,13 @@ radv_use_dcc_for_image_early(struct radv_device *device, struct radv_image *imag
    if (pdev->drirc.debug.disable_dcc_stores && (image->vk.usage & VK_IMAGE_USAGE_2_STORAGE_BIT_KHR))
       return dcc_no("dcc_stores_disabled");
 
+   /* On CHIP_ARIEL (Xclipse 540): disable DCC for STORAGE images and CPU/host transfer copies
+    * to prevent block corruption when mixing transfer writes and sampler reads without full decompression. */
+   if (pdev->info.family == CHIP_ARIEL) {
+      if (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))
+         return dcc_no("ariel_storage_or_host_transfer");
+   }
+
    /* DCC MSAA can't work on GFX10.3 and earlier without FMASK. (Xclipse 920 disables FMASK, and its
     * CB hangs on GFX10.3-style MSAA DCC anyway.) */
    if (image->vk.samples > 1 && pdev->info.gfx_level < GFX11 && !pdev->use_fmask)
@@ -767,8 +774,10 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
    if (image->vk.external_handle_types)
       flags |= RADEON_SURF_SHAREABLE;
 
-   if (is_ahb_or_scanout)
-      flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT;
+   if (is_ahb_or_scanout ||
+       (pdev->info.family == CHIP_ARIEL &&
+        (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))))
+      flags |= RADEON_SURF_DISABLE_DCC | (is_ahb_or_scanout ? RADEON_SURF_SCANOUT : 0);
 
    if (alignment && alignment->maximumRequestedAlignment) {
       bool is_4k_capable;
@@ -1360,6 +1369,9 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
           image->vk.wsi_legacy_scanout) {
          image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_NO_FMASK | RADEON_SURF_NO_HTILE | RADEON_SURF_SCANOUT;
          image->planes[plane].surface.is_linear = true;
+      } else if (pdev->info.family == CHIP_ARIEL &&
+                 (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
+         image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
       }
 
       if (plane > 0 &&
