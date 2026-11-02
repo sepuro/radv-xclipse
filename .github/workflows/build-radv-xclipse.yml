@@ -3,6 +3,7 @@ name: Build RADV Xclipse 540 (Android NDK API 34)
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -149,11 +150,11 @@ jobs:
           retention-days: 30
 
       - name: Publish GitHub Release
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.0-xclipse540
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) v1.1.0 - SurfaceFlinger & WSI Fix"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.1-blackscreen-fix' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.1-blackscreen-fix' }}"
           files: |
             Custom_RADV_Xclipse540.zip
             patches/mesa/01-ariel-ahb-disable-dcc-scanout.patch
