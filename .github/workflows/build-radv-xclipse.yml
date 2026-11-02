@@ -82,6 +82,7 @@ jobs:
             -Dtools= \
             -Dllvm=disabled \
             -Dzstd=disabled \
+            -Dspirv-tools=disabled \
             -Dlmsensors=disabled \
             -Dperfetto=false \
             -Dglx=disabled \
