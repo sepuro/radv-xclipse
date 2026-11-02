@@ -1430,12 +1430,24 @@ schedule_program(Program* program)
     * Otherwise, sacrifice some waves and use more VGPRs, in order to improve scheduling.
     */
    int vgpr_demand = std::max<int>(24, usage.vgpr) + 12 * reg_file_multiple;
+   if (program->family == CHIP_ARIEL) {
+      /* For CHIP_ARIEL (2 WGPs, Wave32): minimize VGPR pressure to prevent wave spill and excessive power */
+      vgpr_demand = std::min(vgpr_demand, 32);
+   }
    int target_waves = std::max(wave_minimum, program->dev.physical_vgprs / vgpr_demand);
+   if (program->family == CHIP_ARIEL) {
+      /* Maximize target waves to ensure 100% occupancy across the 2 WGPs without drops */
+      target_waves = std::max(target_waves, 8 * wave_factor);
+   }
    target_waves = max_suitable_waves(program, std::min<int>(program->num_waves, target_waves));
    assert(target_waves >= program->min_waves);
 
    ctx.mv.max_registers = get_addr_regs_from_waves(program, target_waves);
    ctx.mv.max_registers.vgpr -= 2;
+   if (program->family == CHIP_ARIEL) {
+      /* Cap target VGPR limit in the scheduler to 36 to maintain high wave occupancy */
+      ctx.mv.max_registers.vgpr = std::min<uint16_t>(ctx.mv.max_registers.vgpr, 36);
+   }
 
    /* If this is a callee, don't use unneeded preserved VGPRs. */
    if (program->is_callee) {

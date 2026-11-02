@@ -83,6 +83,11 @@ get_nir_options_for_stage(struct radv_compiler_info *compiler_info, mesa_shader_
    options->frag_coord_form = nir_frag_coord_xy_z_w_separate | nir_frag_coord_use_w_rcp;
    options->io_options |= nir_io_mediump_is_32bit | nir_io_radv_intrinsic_component_workaround;
    options->varying_expression_max_cost = ac_nir_varying_expression_max_cost;
+
+   /* On CHIP_ARIEL, lower mediump / RelaxedPrecision to fp16 to enable packed 16-bit vectorization */
+   if (compiler_info->key.family == CHIP_ARIEL) {
+      options->preserve_mediump = false;
+   }
 }
 
 void

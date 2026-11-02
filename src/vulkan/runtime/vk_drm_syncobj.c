@@ -24,6 +24,7 @@
 #include "vk_drm_syncobj.h"
 
 #include <sched.h>
+#include <time.h>
 #include <xf86drm.h>
 
 #include "drm-uapi/drm.h"
@@ -259,6 +260,10 @@ spin_wait_for_sync_file(struct vk_device *device,
    if (wait_flags & VK_SYNC_WAIT_ANY) {
       while (1) {
          for (uint32_t i = 0; i < wait_count; i++) {
+            uint32_t handle = to_drm_syncobj(waits[i].sync)->syncobj;
+            int err = syncobj_wait_materialized(device, &handle, abs_timeout_ns);
+            if (!err)
+               return VK_SUCCESS;
             VkResult result = sync_has_sync_file(device, waits[i].sync);
             if (result != VK_TIMEOUT)
                return result;
@@ -267,11 +272,17 @@ spin_wait_for_sync_file(struct vk_device *device,
          if (os_time_get_nano() >= abs_timeout_ns)
             return VK_TIMEOUT;
 
-         sched_yield();
+         /* Sleep briefly instead of busy spinning with sched_yield to prevent CPU overheating */
+         struct timespec ts = { .tv_sec = 0, .tv_nsec = 250000 }; /* 250 us */
+         nanosleep(&ts, NULL);
       }
    } else {
       for (uint32_t i = 0; i < wait_count; i++) {
          while (1) {
+            uint32_t handle = to_drm_syncobj(waits[i].sync)->syncobj;
+            int err = syncobj_wait_materialized(device, &handle, abs_timeout_ns);
+            if (!err)
+               break;
             VkResult result = sync_has_sync_file(device, waits[i].sync);
             if (result == VK_SUCCESS)
                break; /* Break out of the inner while */
@@ -282,7 +293,9 @@ spin_wait_for_sync_file(struct vk_device *device,
             if (os_time_get_nano() >= abs_timeout_ns)
                return VK_TIMEOUT;
 
-            sched_yield();
+            /* Sleep briefly instead of busy spinning with sched_yield to prevent CPU overheating */
+            struct timespec ts = { .tv_sec = 0, .tv_nsec = 250000 }; /* 250 us */
+            nanosleep(&ts, NULL);
          }
       }
    }

@@ -1290,8 +1290,7 @@ radv_device_init_compiler_info(struct radv_device *device)
             .nir_debug_info = RADV_DEBUG(instance, NIR_DEBUG_INFO),
             .use_elf = !!(instance->experimental_flags & RADV_EXPERIMENTAL_ELF) && AMD_LLVM_AVAILABLE,
             .force_aniso = device->force_aniso,
-            /* Use CHIP_UNKNOWN for increased compatiblity between caches. */
-            .family = pdev->use_llvm ? pdev->info.family : CHIP_UNKNOWN,
+            .family = pdev->info.family,
 
             /* Wave/subgroup sizes */
             .ge_wave_size = pdev->ge_wave_size,
@@ -1544,7 +1543,16 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
     * RADV_FORCE_VRS is mainly for testing.
     */
    if (pdev->info.gfx_level >= GFX10_3) {
-      if (pdev->info.gfx_level == GFX10_3 && !pdev->info.has_dedicated_vram &&
+      if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
+         /* Force adaptive VRS 1x2 by default on CHIP_ARIEL / Exynos 1580 */
+         device->force_vrs = RADV_FORCE_VRS_1x2;
+         device->force_vrs_enabled = true;
+         if (os_get_option("RADV_FORCE_VRS")) {
+            const char *vrs_rates = os_get_option("RADV_FORCE_VRS");
+            device->force_vrs = radv_parse_vrs_rates(vrs_rates);
+            device->force_vrs_enabled = device->force_vrs != RADV_FORCE_VRS_1x1;
+         }
+      } else if (pdev->info.gfx_level == GFX10_3 && !pdev->info.has_dedicated_vram &&
           os_get_option("RADV_FORCE_VRS_CONFIG_FILE")) {
          const char *file = radv_get_force_vrs_config_file();
 

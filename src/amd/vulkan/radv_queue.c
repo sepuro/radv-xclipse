@@ -778,6 +778,11 @@ radv_emit_compute(struct radv_device *device, struct radv_cmd_stream *cs, bool i
       }
    }
 
+   /* Ensure CP_PERFMON_CNTL is 0 on CHIP_ARIEL so compute dispatches don't block IFPO */
+   if (pdev->info.family == CHIP_ARIEL) {
+      ac_pm4_set_reg(pm4, R_036020_CP_PERFMON_CNTL, 0);
+   }
+
    ac_pm4_finalize(pm4);
    ac_pm4_emit_commands(cs->b, pm4);
    ac_pm4_free_state(pm4);
@@ -960,12 +965,15 @@ radv_emit_graphics(struct radv_device *device, struct radv_cmd_stream *cs)
    /* Xclipse IFPO guard: the sgpu kernel's inter-frame power-off can wedge the CPU in
     * __vangogh_lite_ifpo_power_on (busy-wait, no timeout) until the watchdog resets the phone. It
     * refuses to power off while CP_PERFMON_CNTL bits [7:0] are nonzero, so keep the perfmon block
-    * in STOP_COUNTING. The preamble re-arms it every submit. May distort
-    * VK_KHR_performance_query across submits. */
-   if (pdev->info.gfx11_shader_core) {
+    * in STOP_COUNTING on older chips. On CHIP_ARIEL (Exynos 1580 / Xclipse 540), sgpu.ko handles IFPO
+    * properly with PMU snapshots. Leaving CP_PERFMON_CNTL = 0 enables inter-frame power off (IFPO)
+    * between frames and prevents thermal buildup. */
+   if (pdev->info.gfx11_shader_core && pdev->info.family != CHIP_ARIEL) {
       ac_pm4_set_reg(pm4, R_036020_CP_PERFMON_CNTL,
                      S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_STOP_COUNTING));
       RADV_LOGI("[QUEUE] IFPO guard armed (CP_PERFMON_CNTL=STOP_COUNTING blocks inter-frame power off)");
+   } else if (pdev->info.family == CHIP_ARIEL) {
+      ac_pm4_set_reg(pm4, R_036020_CP_PERFMON_CNTL, 0);
    }
 
    /* Xclipse 960: its kernel programs neither the GL2-to-LLC allocation policy per MTYPE nor

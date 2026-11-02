@@ -2337,6 +2337,7 @@ public:
    ac_shader_config* config;
    struct aco_shader_info info;
    enum amd_gfx_level gfx_level;
+   enum radeon_family family;
    DeviceInfo dev;
    unsigned wave_size;
    RegClass lane_mask;

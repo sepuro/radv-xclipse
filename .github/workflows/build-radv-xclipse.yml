@@ -163,4 +163,5 @@ jobs:
             patches/mesa/02-ariel-selinux-renderd128-and-nohiz.patch
             patches/mesa/03-ariel-android-wsi-sync.patch
             patches/mesa/04-ariel-full-performance-optimizations.patch
+            patches/mesa/05-ariel-smart-thermal-and-fps-boost.patch
           generate_release_notes: true

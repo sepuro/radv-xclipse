@@ -1789,7 +1789,14 @@ radv_generate_graphics_state_key(const struct radv_compiler_info *compiler_info,
    const bool vrs_disabled_by_sample_shading = key.ms.sample_shading_enable;
    const bool vrs_is_possible = !vrs_disabled_by_msaa_8x && !vrs_disabled_by_sample_shading;
 
-   key.ps.force_vrs_enabled = vrs_is_possible && compiler_info->force_vrs_enabled && !radv_is_static_vrs_enabled(state);
+   /* On CHIP_ARIEL, apply adaptive VRS only to 3D passes with depth/stencil buffers, keeping 1x1 on UI/2D */
+   bool force_vrs_pass = compiler_info->force_vrs_enabled;
+   if ((compiler_info->key.family == CHIP_ARIEL || compiler_info->ac->gfx_level >= GFX11) &&
+       state->rp && !radv_pipeline_has_ds_attachments(state->rp)) {
+      force_vrs_pass = false;
+   }
+
+   key.ps.force_vrs_enabled = vrs_is_possible && force_vrs_pass && !radv_is_static_vrs_enabled(state);
    key.vrs_may_be_enabled =
       vrs_is_possible && (radv_is_static_vrs_enabled(state) || BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_FSR) ||
                           key.ps.force_vrs_enabled);

@@ -70,6 +70,7 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    program->config = config;
    program->info = *info;
    program->gfx_level = options->gfx_level;
+   program->family = options->family;
    /* Xclipse 920: GFX11 ISA, but the SX/CB consuming exports is GFX10.3 and wants the VM/COMPR bits.
     * A real GFX11 part is never CHIP_VANGOGH. */
    const bool xclipse_920 = options->gfx_level >= GFX11 && options->family == CHIP_VANGOGH;

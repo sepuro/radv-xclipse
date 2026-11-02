@@ -3266,10 +3266,14 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    radv_physical_device_get_supported_extensions(pdev, &pdev->vk.supported_extensions);
    radv_physical_device_get_features(pdev, &pdev->vk.supported_features);
 
-   /* Enable VK_EXT_graphics_pipeline_library (GPL) for CHIP_ARIEL for fast pipeline compiling */
+   /* Enable VK_EXT_graphics_pipeline_library (GPL) and VK_KHR_fragment_shading_rate for CHIP_ARIEL */
    if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
       pdev->vk.supported_extensions.EXT_graphics_pipeline_library = true;
       pdev->vk.supported_features.graphicsPipelineLibrary = true;
+      pdev->vk.supported_extensions.KHR_fragment_shading_rate = true;
+      pdev->vk.supported_features.pipelineFragmentShadingRate = true;
+      pdev->vk.supported_features.primitiveFragmentShadingRate = true;
+      pdev->vk.supported_features.attachmentFragmentShadingRate = true;
    }
 
    struct stat primary_stat = {0}, render_stat = {0};
