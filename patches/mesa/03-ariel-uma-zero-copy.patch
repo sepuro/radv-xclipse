@@ -1,0 +1,45 @@
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index 21ce4e4..bf55a75 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -669,7 +669,10 @@ radv_get_vram_size(struct radv_physical_device *pdev)
+ static bool
+ radv_xclipse_pal_heaps(const struct radv_physical_device *pdev)
+ {
+-   if (pdev->info.pci_id != 0x73a0)
++   /* CHIP_ARIEL / Xclipse 540 is a modern UMA APU and requires a single unified LPDDR5 heap.
++    * Disable the legacy Xclipse 920 64MB PAL-parity heap. */
++   if (pdev->info.pci_id != 0x73a0 || pdev->info.family == CHIP_ARIEL ||
++       pdev->info.xclipse_model == AC_XCLIPSE_540)
+       return false;
+ 
+    const char *src = "default";
+@@ -830,8 +833,12 @@ radv_physical_device_init_mem_types(struct radv_physical_device *pdev)
+       /* DEVICE_LOCAL-only type (no HOST_VISIBLE). With vram_size_kb == 0 RADV only advertised
+        * host-visible types; the vendor advertises device-local-only ones too, and allocators like
+        * DXVK use them for memory that never needs CPU mapping. Appended so existing type indices
+-       * don't move. Only on a DEVICE_LOCAL GTT heap (not in the two-heap APU layout). */
++       * don't move. Only on a DEVICE_LOCAL GTT heap (not in the two-heap APU layout).
++       * On CHIP_ARIEL (Xclipse 540), omit this type so all memory types on the unified GTT
++       * heap retain HOST_VISIBLE | HOST_COHERENT, allowing DXVK/VKD3D to perform zero-copy
++       * direct buffer mapping without allocating staging buffers. */
+       if (pdev->info.gfx11_shader_core &&
++          pdev->info.family != CHIP_ARIEL && pdev->info.xclipse_model != AC_XCLIPSE_540 &&
+           (pdev->memory_properties.memoryHeaps[gart_index].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)) {
+          pdev->memory_domains[type_count] = RADEON_DOMAIN_GTT;
+          pdev->memory_flags[type_count] = RADEON_FLAG_NO_CPU_ACCESS;
+@@ -2107,10 +2114,11 @@ radv_get_physical_device_properties(struct radv_physical_device *pdev)
+    size_t max_descriptor_set_size = radv_max_descriptor_set_size();
+ 
+    VkPhysicalDeviceType device_type;
+-   /* The Samsung Xclipse 920 is an integrated GPU, but its kernel does not set
+-    * AMDGPU_IDS_FLAGS_FUSION, so has_dedicated_vram stays true. Report INTEGRATED.
++   /* The Samsung Xclipse GPUs (Xclipse 920 / 540 / CHIP_ARIEL) are integrated GPUs, but their kernel
++    * does not set AMDGPU_IDS_FLAGS_FUSION, so has_dedicated_vram stays true. Report INTEGRATED.
+     */
+-   if (pdev->info.pci_id == 0x73a0) {
++   if (pdev->info.pci_id == 0x73a0 || pdev->info.family == CHIP_ARIEL ||
++       pdev->info.xclipse_model == AC_XCLIPSE_540) {
+       device_type = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+    } else if (pdev->info.has_dedicated_vram) {
+       device_type = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;

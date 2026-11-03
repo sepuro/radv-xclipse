@@ -1,0 +1,46 @@
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index 8666faa..1df19ed 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -870,6 +870,41 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct
+          NIR_PASS(_, nir, nir_opt_constant_folding);
+       }
+ 
++      /* On CHIP_ARIEL (RDNA 3 / Xclipse 540), fold sampler return conversions to 16 bits
++       * for fragment shaders so TMUs emit native d16 image_sample instructions for mediump / fp16.
++       */
++      if (compiler_info->key.family == CHIP_ARIEL &&
++          nir->info.stage == MESA_SHADER_FRAGMENT) {
++         struct nir_opt_tex_srcs_options opt_srcs_options[] = {
++            {
++               .sampler_dims = ~(BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) | BITFIELD_BIT(GLSL_SAMPLER_DIM_BUF)),
++               .src_types = (1 << nir_tex_src_coord) | (1 << nir_tex_src_lod) | (1 << nir_tex_src_bias) |
++                            (1 << nir_tex_src_min_lod) | (1 << nir_tex_src_ms_index) |
++                            (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
++            },
++            {
++               .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
++               .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
++            },
++         };
++         struct nir_opt_16bit_tex_image_options opt_16bit_options = {
++            .rounding_mode = nir_rounding_mode_undef,
++            .opt_tex_dest_types = nir_type_float | nir_type_int | nir_type_uint,
++            .opt_image_dest_types = nir_type_float | nir_type_int | nir_type_uint,
++            .integer_dest_saturates = true,
++            .opt_image_store_data = true,
++            .opt_image_srcs = true,
++            .opt_srcs_options_count = 2,
++            .opt_srcs_options = opt_srcs_options,
++         };
++         bool tex_opt_prog = false;
++         NIR_PASS(tex_opt_prog, nir, nir_opt_16bit_tex_image, &opt_16bit_options);
++         if (tex_opt_prog) {
++            NIR_PASS(_, nir, nir_opt_copy_prop);
++            NIR_PASS(_, nir, nir_opt_dce);
++         }
++      }
++
+       radv_optimize_nir(nir, false);
+ 
+       NIR_PASS(_, nir, nir_opt_scalar_array_vars_to_vec, nir_var_function_temp | nir_var_mem_shared);
