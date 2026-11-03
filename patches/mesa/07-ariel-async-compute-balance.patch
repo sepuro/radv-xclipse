@@ -1,0 +1,21 @@
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index e05c53b..163ed56 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -3561,9 +3561,15 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
+    if (radv_compute_queue_enabled(pdev)) {
+       VkQueueFlags compute_flags = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_SPARSE_BINDING_BIT;
+       if (*pCount > idx) {
++         uint32_t compute_queue_count = pdev->info.ip[AMD_IP_COMPUTE].num_queues;
++         /* For CHIP_ARIEL (Xclipse 540 / Exynos 1580), limit exposed async compute queues to 1
++          * to prevent secondary compute tasks from starving the main graphics pipeline on 2 WGPs. */
++         if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540)
++            compute_queue_count = MIN2(compute_queue_count, 1);
++
+          *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
+             .queueFlags = compute_flags | radv_queue_family_protected_flag(pdev, RADV_QUEUE_COMPUTE),
+-            .queueCount = pdev->info.ip[AMD_IP_COMPUTE].num_queues,
++            .queueCount = compute_queue_count,
+             .timestampValidBits = 64,
+             .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
+          };

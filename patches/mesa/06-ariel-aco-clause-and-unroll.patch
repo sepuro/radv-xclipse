@@ -1,0 +1,42 @@
+diff --git a/src/amd/compiler/aco_form_hard_clauses.cpp b/src/amd/compiler/aco_form_hard_clauses.cpp
+index 711d98d..a19d9b8 100644
+--- a/src/amd/compiler/aco_form_hard_clauses.cpp
++++ b/src/amd/compiler/aco_form_hard_clauses.cpp
+@@ -49,7 +49,7 @@ get_type(Program* program, aco_ptr<Instruction>& instr)
+    if (instr->isSMEM() && !instr->operands.empty())
+       return clause_smem;
+ 
+-   if (program->gfx_level >= GFX11) {
++   if (program->gfx_level >= GFX11 || program->family == CHIP_ARIEL) {
+       if (instr->isMIMG()) {
+          uint8_t vmem_type = get_vmem_type(instr.get(), program->dev.has_point_sample_accel);
+          switch (vmem_type) {
+@@ -110,8 +110,10 @@ form_hard_clauses(Program* program)
+ {
+    /* The ISA documentation says 63 is the maximum for GFX11/12, but according to
+     * LLVM there are HW bugs with more than 32 instructions.
++    * For GFX11 and CHIP_ARIEL (Xclipse 540 / 2 WGPs), enforce maximum clause length of 32
++    * for consecutive VMEM/SMEM s_clause to not exceed safe instruction cache limits.
+     */
+-   const unsigned max_clause_length = program->gfx_level >= GFX11 ? 32 : 63;
++   const unsigned max_clause_length = (program->gfx_level >= GFX11 || program->family == CHIP_ARIEL) ? 32 : 63;
+    for (Block& block : program->blocks) {
+       unsigned num_instrs = 0;
+       aco_ptr<Instruction> current_instrs[63];
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index cebf804..897b0f7 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -84,9 +84,11 @@ get_nir_options_for_stage(struct radv_compiler_info *compiler_info, mesa_shader_
+    options->io_options |= nir_io_mediump_is_32bit | nir_io_radv_intrinsic_component_workaround;
+    options->varying_expression_max_cost = ac_nir_varying_expression_max_cost;
+ 
+-   /* On CHIP_ARIEL, lower mediump / RelaxedPrecision to fp16 to enable packed 16-bit vectorization */
++   /* On CHIP_ARIEL, lower mediump / RelaxedPrecision to fp16 to enable packed 16-bit vectorization
++    * and configure max_unroll_iterations = 32 to unroll small lighting/shadow loops on 2 WGPs. */
+    if (compiler_info->key.family == CHIP_ARIEL) {
+       options->preserve_mediump = false;
++      options->max_unroll_iterations = 32;
+       if (stage == MESA_SHADER_FRAGMENT || stage == MESA_SHADER_COMPUTE) {
+          options->vectorize_vec2_16bit = true;
+       }
