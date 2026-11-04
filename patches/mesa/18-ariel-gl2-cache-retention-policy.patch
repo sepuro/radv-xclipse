@@ -1,0 +1,68 @@
+diff --git a/src/amd/vulkan/radv_buffer_view.c b/src/amd/vulkan/radv_buffer_view.c
+index ee42349..fc33b13 100644
+--- a/src/amd/vulkan/radv_buffer_view.c
++++ b/src/amd/vulkan/radv_buffer_view.c
+@@ -87,6 +87,13 @@ radv_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInf
+    radv_make_texel_buffer_descriptor(device, buffer->vk.device_address + view->vk.offset, view->vk.format,
+                                      view->vk.range, view->state);
+ 
++   const struct radv_physical_device *pdev = radv_device_physical(device);
++   if (buffer->bo && pdev->info.family == CHIP_ARIEL) {
++      if (!buffer->bo->vram_no_cpu_access || (buffer->bo->initial_domain & RADEON_DOMAIN_GTT)) {
++         view->state[3] |= (1u << 26);
++      }
++   }
++
+    *pView = radv_buffer_view_to_handle(view);
+ 
+    return VK_SUCCESS;
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 958cad4..b01327c 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -7668,6 +7668,12 @@ radv_write_vertex_descriptor(const struct radv_cmd_buffer *cmd_buffer, const str
+    if (uses_dynamic_inputs)
+       va += vbo_info.attrib_offset;
+ 
++   if (pdev->info.family == CHIP_ARIEL) {
++      /* Ariel (Xclipse 540): GL2 cache retention policy. Mark vertex buffer descriptors
++       * as non-allocating in GL2 (bit 26) so streaming attributes do not thrash textures. */
++      rsrc_word3 |= (1u << 26);
++   }
++
+    desc[0] = va;
+    desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
+    desc[2] = num_records;
+@@ -9243,6 +9249,9 @@ radv_bind_descriptor_sets(struct radv_cmd_buffer *cmd_buffer, const VkBindDescri
+ 
+             ac_build_raw_buffer_descriptor(pdev->info.desc_gfx_level, pdev->info.compiler_info.has_desc_resource_level, va,
+                                            size, dst);
++            if (pdev->info.family == CHIP_ARIEL) {
++               dst[3] |= (1u << 26);
++            }
+          }
+ 
+          descriptors_state->dynamic_descriptors_offsets[set_idx] = dynamic_offset_start;
+diff --git a/src/amd/vulkan/radv_descriptors.h b/src/amd/vulkan/radv_descriptors.h
+index ee39a65..cee3488 100644
+--- a/src/amd/vulkan/radv_descriptors.h
++++ b/src/amd/vulkan/radv_descriptors.h
+@@ -84,6 +84,18 @@ radv_write_buffer_descriptor_impl(struct radv_device *device, VkDescriptorType d
+    }
+ 
+    radv_write_buffer_descriptor(device, descriptor_type, dst, va, range);
++
++   const struct radv_physical_device *pdev = radv_device_physical(device);
++   if (buffer && buffer->bo && pdev->info.family == CHIP_ARIEL) {
++      /* Ariel (Xclipse 540): GL2 cache retention policy.
++       * For host-visible streaming buffers (not pure VRAM/device-local, or CPU accessible),
++       * set LLC_NOALLOC in rsrc_word3 (bit 26) so dynamic uniform/vertex data streamed
++       * from CPU does not thrash or evict texture and color/depth cache lines from the small GL2.
++       */
++      if (!buffer->bo->vram_no_cpu_access || (buffer->bo->initial_domain & RADEON_DOMAIN_GTT)) {
++         dst[3] |= (1u << 26);
++      }
++   }
+ }
+ 
+ static ALWAYS_INLINE void

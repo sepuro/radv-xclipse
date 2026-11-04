@@ -1,0 +1,52 @@
+diff --git a/src/amd/compiler/aco_insert_waitcnt.cpp b/src/amd/compiler/aco_insert_waitcnt.cpp
+index 4629108..58e9580 100644
+--- a/src/amd/compiler/aco_insert_waitcnt.cpp
++++ b/src/amd/compiler/aco_insert_waitcnt.cpp
+@@ -928,6 +928,28 @@ gen(Instruction* instr, wait_ctx& ctx)
+ void
+ emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions, wait_imm& imm)
+ {
++   if (imm.empty())
++      return;
++
++   /* CHIP_ARIEL / GFX11: avoid consecutive redundant s_waitcnt */
++   if (!instructions.empty()) {
++      Instruction* prev = instructions.back().get();
++      if (prev->opcode == aco_opcode::s_waitcnt_vscnt && imm.vs != wait_imm::unset_counter) {
++         if (prev->salu().imm <= imm.vs) {
++            imm.vs = wait_imm::unset_counter;
++         }
++      }
++      if (prev->opcode == aco_opcode::s_waitcnt) {
++         wait_imm prev_imm;
++         prev_imm.unpack(ctx.gfx_level, prev);
++         prev_imm.combine(imm);
++         prev->salu().imm = prev_imm.pack(ctx.gfx_level);
++         imm.vm = wait_imm::unset_counter;
++         imm.exp = wait_imm::unset_counter;
++         imm.lgkm = wait_imm::unset_counter;
++      }
++   }
++
+    Builder bld(ctx.program, &instructions);
+    imm.build_waitcnt(bld);
+ }
+@@ -1082,6 +1104,18 @@ handle_block(Program* program, Block& block, wait_ctx& ctx)
+ 
+          if (is_ordered_count_acquire)
+             queued_imm.combine(ctx.bar[barrier_info_release_dep].imm[ffs(storage_gds) - 1]);
++
++         /* Ariel (Exynos 1580): Thermal efficiency in GPU spin-locks.
++          * When tight loops perform atomic operations (e.g. spin-locks / polling loops),
++          * insert an s_sleep 1 instruction after the atomic to throttle ALU switching power
++          * and prevent thermal runaway across Ariel's 2 WGPs.
++          */
++         if (program->family == CHIP_ARIEL &&
++             (block.kind & (block_kind_loop_header | block_kind_loop_latch)) &&
++             (sync_info.semantics & semantic_atomic)) {
++            Builder bld(program, &new_instructions);
++            bld.sopp(aco_opcode::s_sleep, 1);
++         }
+       }
+    }
+ 
