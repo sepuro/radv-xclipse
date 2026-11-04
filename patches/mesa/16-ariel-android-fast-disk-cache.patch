@@ -1,0 +1,46 @@
+diff --git a/src/util/compress.c b/src/util/compress.c
+index 1f4b429..4dffdd8 100644
+--- a/src/util/compress.c
++++ b/src/util/compress.c
+@@ -43,7 +43,13 @@
+ #include "macros.h"
+ 
+ /* 3 is the recomended level, with 22 as the absolute maximum */
++#ifdef ANDROID
++#define ZSTD_COMPRESSION_LEVEL 1
++#define ZLIB_COMPRESSION_LEVEL 1
++#else
+ #define ZSTD_COMPRESSION_LEVEL 3
++#define ZLIB_COMPRESSION_LEVEL Z_BEST_COMPRESSION
++#endif
+ 
+ size_t
+ util_compress_max_compressed_len(size_t in_data_size)
+@@ -96,7 +102,13 @@ util_compress_deflate(const uint8_t *in_data, size_t in_data_size,
+    strm.avail_in = in_data_size;
+    strm.avail_out = out_buff_size;
+ 
++#ifdef ANDROID
++   /* On Android (Exynos 1580 / Cortex-A720), use fast compression level (1)
++    * to minimize CPU overhead when writing shader entries to disk cache during gameplay. */
++   int ret = deflateInit(&strm, ZLIB_COMPRESSION_LEVEL);
++#else
+    int ret = deflateInit(&strm, Z_BEST_COMPRESSION);
++#endif
+    if (ret != Z_OK) {
+        (void) deflateEnd(&strm);
+        return 0;
+diff --git a/src/util/disk_cache_os.c b/src/util/disk_cache_os.c
+index 8295697..8772ed5 100644
+--- a/src/util/disk_cache_os.c
++++ b/src/util/disk_cache_os.c
+@@ -783,6 +783,9 @@ create_cache_item_header_and_blob(struct disk_cache_put_job *dc_job,
+       compressed_size = dc_job->size;
+       compressed_data = dc_job->data;
+    } else {
++#ifdef ANDROID
++      /* On Android, shader disk cache compression uses fast level (1) to prevent CPU frame spikes */
++#endif
+       compressed_data = malloc(max_buf);
+       if (compressed_data == NULL)
+          return false;

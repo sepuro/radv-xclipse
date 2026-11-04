@@ -1,0 +1,72 @@
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 33fd1df..bd7de2d 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -180,6 +180,13 @@ radv_cmd_set_depth_bias(struct radv_cmd_buffer *cmd_buffer, const struct radv_cm
+ {
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Depth Bias parameters to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (state->dynamic.vk.rs.depth_bias.constant_factor == info->constant_factor &&
++       state->dynamic.vk.rs.depth_bias.clamp == info->clamp &&
++       state->dynamic.vk.rs.depth_bias.slope_factor == info->slope_factor &&
++       state->dynamic.vk.rs.depth_bias.representation == info->representation)
++      return;
++
+    state->dynamic.vk.rs.depth_bias.constant_factor = info->constant_factor;
+    state->dynamic.vk.rs.depth_bias.clamp = info->clamp;
+    state->dynamic.vk.rs.depth_bias.slope_factor = info->slope_factor;
+@@ -537,6 +544,10 @@ radv_cmd_set_blend_constants(struct radv_cmd_buffer *cmd_buffer, const float ble
+ {
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Blend Constants to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (!memcmp(state->dynamic.vk.cb.blend_constants, blend_constants, sizeof(float) * 4))
++      return;
++
+    memcpy(state->dynamic.vk.cb.blend_constants, blend_constants, sizeof(float) * 4);
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_BLEND_CONSTANTS;
+@@ -652,6 +663,9 @@ radv_cmd_set_viewport_with_count(struct radv_cmd_buffer *cmd_buffer, uint32_t vi
+ {
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   if (state->dynamic.vk.vp.viewport_count == viewport_count)
++      return;
++
+    state->dynamic.vk.vp.viewport_count = viewport_count;
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_VIEWPORT_WITH_COUNT;
+@@ -664,6 +678,11 @@ radv_cmd_set_viewport(struct radv_cmd_buffer *cmd_buffer, uint32_t first, uint32
+ {
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Viewport state to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (!memcmp(state->dynamic.vk.vp.viewports + first, viewports, count * sizeof(*viewports)) &&
++       !memcmp(state->dynamic.vp_xform + first, vp_xform, count * sizeof(*vp_xform)))
++      return;
++
+    memcpy(state->dynamic.vk.vp.viewports + first, viewports, count * sizeof(*viewports));
+    memcpy(state->dynamic.vp_xform + first, vp_xform, count * sizeof(*vp_xform));
+ 
+@@ -676,6 +695,9 @@ radv_cmd_set_scissor_with_count(struct radv_cmd_buffer *cmd_buffer, uint32_t sci
+ {
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   if (state->dynamic.vk.vp.scissor_count == scissor_count)
++      return;
++
+    state->dynamic.vk.vp.scissor_count = scissor_count;
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_SCISSOR_WITH_COUNT;
+@@ -686,6 +708,10 @@ radv_cmd_set_scissor(struct radv_cmd_buffer *cmd_buffer, uint32_t first, uint32_
+ {
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Scissor state to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (!memcmp(state->dynamic.vk.vp.scissors + first, scissors, count * sizeof(*scissors)))
++      return;
++
+    memcpy(state->dynamic.vk.vp.scissors + first, scissors, count * sizeof(*scissors));
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_SCISSOR;

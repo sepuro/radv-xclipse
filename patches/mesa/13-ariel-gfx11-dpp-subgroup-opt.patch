@@ -1,0 +1,55 @@
+diff --git a/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp b/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp
+index 00fa48f..f4dde6f 100644
+--- a/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp
++++ b/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp
+@@ -176,6 +176,24 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask, bo
+       if (dpp_ctrl != 0xffff)
+          return bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl, 0xf, 0xf, true,
+                              allow_fi);
++
++      /* On GFX11 / CHIP_ARIEL in Wave32, avoid LDS ds_swizzle for local lane shuffles
++       * by preferentially synthesizing with permlane16 / permlanex16 primitives. */
++      if ((ctx->options->gfx_level >= GFX11 || ctx->program->family == CHIP_ARIEL) &&
++          ctx->program->wave_size == 32) {
++         uint64_t lane_mask = 0;
++         for (unsigned i = 0; i < 16; i++)
++            lane_mask |= uint64_t((i & and_mask) ^ (xor_mask & 0xf)) << (i * 4);
++         Temp op1 = bld.copy(bld.def(s1), Operand::c32(lane_mask & 0xffffffff));
++         Temp op2 = bld.copy(bld.def(s1), Operand::c32(lane_mask >> 32));
++         Temp same = bld.vop3(aco_opcode::v_permlane16_b32, bld.def(v1), src, op1, op2);
++         Temp opp = bld.vop3(aco_opcode::v_permlanex16_b32, bld.def(v1), src, op1, op2);
++         Temp hi_mask = bld.copy(bld.def(bld.lm), Operand::c32(0xffff0000u));
++         if (xor_mask & 0x10)
++            return bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), opp, same, hi_mask);
++         else
++            return bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), same, opp, hi_mask);
++      }
+    }
+ 
+    return bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, mask, 0, false);
+@@ -3595,8 +3613,23 @@ emit_rotate_by_constant(isel_context* ctx, Temp& dst, Temp src, unsigned cluster
+    } else if (cluster_size == 16 && ctx->program->gfx_level >= GFX8) {
+       dst = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(rc), src, dpp_row_rr(16 - delta));
+    } else if (cluster_size <= 32 && ctx->program->gfx_level >= GFX8) {
+-      uint32_t ctrl = ds_pattern_rotate(delta, ~(cluster_size - 1) & 0x1f);
+-      dst = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, ctrl);
++      if (cluster_size == 32 && (ctx->program->gfx_level >= GFX11 || ctx->program->family == CHIP_ARIEL)) {
++         /* On GFX11 / CHIP_ARIEL (Wave32), prefer permlane16 / permlanex16 primitives over ds_swizzle */
++         uint64_t lane_mask = 0;
++         for (unsigned i = 0; i < 16; i++)
++            lane_mask |= uint64_t((i + delta) & 0xf) << (i * 4);
++         Temp op1 = bld.copy(bld.def(s1), Operand::c32(lane_mask & 0xffffffff));
++         Temp op2 = bld.copy(bld.def(s1), Operand::c32(lane_mask >> 32));
++         aco_opcode op_lo = ((delta & 0x10) ? aco_opcode::v_permlanex16_b32 : aco_opcode::v_permlane16_b32);
++         aco_opcode op_hi = ((delta & 0x10) ? aco_opcode::v_permlane16_b32 : aco_opcode::v_permlanex16_b32);
++         Temp r0 = bld.vop3(op_lo, bld.def(rc), src, op1, op2);
++         Temp r1 = bld.vop3(op_hi, bld.def(rc), src, op1, op2);
++         Temp hi_mask = bld.copy(bld.def(bld.lm), Operand::c32(0xffff0000u));
++         dst = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(rc), r0, r1, hi_mask);
++      } else {
++         uint32_t ctrl = ds_pattern_rotate(delta, ~(cluster_size - 1) & 0x1f);
++         dst = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, ctrl);
++      }
+    } else if (cluster_size == 64) {
+       bool has_wf_dpp = ctx->program->gfx_level >= GFX8 && ctx->program->gfx_level < GFX10;
+       if (delta == 32 && ctx->program->gfx_level >= GFX11 && !ctx->program->dev.no_permlane64) {

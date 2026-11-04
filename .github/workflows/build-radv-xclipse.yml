@@ -64,10 +64,10 @@ jobs:
 
       - name: Apply Mesa Ariel Modular Patches
         run: |
-          for p in $(ls -1v patches/mesa/0*.patch 2>/dev/null); do
-            if [ -f "$p" ]; then
-              echo "Applying modular patch: $p..."
-              patch -p1 -N < "$p" || true
+          for patch_file in $(ls patches/mesa/*.patch | sort -V); do
+            if [ -f "$patch_file" ]; then
+              echo "Applying modular patch: $patch_file..."
+              patch -p1 -N < "$patch_file" || true
             fi
           done
 
@@ -151,7 +151,7 @@ jobs:
             "name": "Custom RADV Xclipse 540 (Mesa ${MESA_VER})",
             "description": "Mesa RADV custom Vulkan driver for Samsung Exynos 1580 (Xclipse 540 / CHIP_ARIEL)",
             "author": "Antigravity & purwowd",
-            "packageVersion": "2.1.0",
+            "packageVersion": "2.3.0",
             "vendor": "Mesa/RADV",
             "driverVersion": "Vulkan 1.3.275",
             "minApi": 34,
@@ -183,8 +183,8 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.1.0-elite-plus' }}
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.1.0-elite-plus' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.3.0-apex-modular' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.3.0-apex-modular' }}"
           files: |
             Custom_RADV_Xclipse540.zip
             patches/mesa/01-ariel-master-safe.patch
@@ -195,6 +195,14 @@ jobs:
             patches/mesa/06-ariel-aco-clause-and-unroll.patch
             patches/mesa/07-ariel-async-compute-balance.patch
             patches/mesa/08-ariel-push-desc-fastpath.patch
+            patches/mesa/09-ariel-aco-vmem-latency-sched.patch
+            patches/mesa/10-ariel-lds-shared-mem-opt.patch
+            patches/mesa/11-ariel-conservative-early-z.patch
+            patches/mesa/12-ariel-cs-ib-prealloc.patch
+            patches/mesa/13-ariel-gfx11-dpp-subgroup-opt.patch
+            patches/mesa/14-ariel-pm4-redundant-state-filter.patch
+            patches/mesa/15-ariel-tc-compatible-fast-clear-opt.patch
+            patches/mesa/16-ariel-android-fast-disk-cache.patch
             patches/libdrm/01-libdrm-xclipse-mmr-cache.patch
             patches/libdrm/01-libdrm-xclipse-sgpu.patch
           generate_release_notes: true
