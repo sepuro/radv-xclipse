@@ -1,0 +1,355 @@
+diff --git a/src/amd/compiler/aco_form_hard_clauses.cpp b/src/amd/compiler/aco_form_hard_clauses.cpp
+index 711d98d..a19d9b8 100644
+--- a/src/amd/compiler/aco_form_hard_clauses.cpp
++++ b/src/amd/compiler/aco_form_hard_clauses.cpp
+@@ -49,7 +49,7 @@ get_type(Program* program, aco_ptr<Instruction>& instr)
+    if (instr->isSMEM() && !instr->operands.empty())
+       return clause_smem;
+ 
+-   if (program->gfx_level >= GFX11) {
++   if (program->gfx_level >= GFX11 || program->family == CHIP_ARIEL) {
+       if (instr->isMIMG()) {
+          uint8_t vmem_type = get_vmem_type(instr.get(), program->dev.has_point_sample_accel);
+          switch (vmem_type) {
+@@ -110,8 +110,10 @@ form_hard_clauses(Program* program)
+ {
+    /* The ISA documentation says 63 is the maximum for GFX11/12, but according to
+     * LLVM there are HW bugs with more than 32 instructions.
++    * For GFX11 and CHIP_ARIEL (Xclipse 540 / 2 WGPs), enforce maximum clause length of 32
++    * for consecutive VMEM/SMEM s_clause to not exceed safe instruction cache limits.
+     */
+-   const unsigned max_clause_length = program->gfx_level >= GFX11 ? 32 : 63;
++   const unsigned max_clause_length = (program->gfx_level >= GFX11 || program->family == CHIP_ARIEL) ? 32 : 63;
+    for (Block& block : program->blocks) {
+       unsigned num_instrs = 0;
+       aco_ptr<Instruction> current_instrs[63];
+diff --git a/src/amd/compiler/aco_insert_waitcnt.cpp b/src/amd/compiler/aco_insert_waitcnt.cpp
+index 4629108..af73814 100644
+--- a/src/amd/compiler/aco_insert_waitcnt.cpp
++++ b/src/amd/compiler/aco_insert_waitcnt.cpp
+@@ -928,6 +928,28 @@ gen(Instruction* instr, wait_ctx& ctx)
+ void
+ emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions, wait_imm& imm)
+ {
++   if (imm.empty())
++      return;
++
++   /* CHIP_ARIEL / GFX11: avoid consecutive redundant s_waitcnt */
++   if (!instructions.empty()) {
++      Instruction* prev = instructions.back().get();
++      if (prev->opcode == aco_opcode::s_waitcnt_vscnt && imm.vs != wait_imm::unset_counter) {
++         if (prev->salu().imm <= imm.vs) {
++            imm.vs = wait_imm::unset_counter;
++         }
++      }
++      if (prev->opcode == aco_opcode::s_waitcnt) {
++         wait_imm prev_imm;
++         prev_imm.unpack(ctx.gfx_level, prev);
++         prev_imm.combine(imm);
++         prev->salu().imm = prev_imm.pack(ctx.gfx_level);
++         imm.vm = wait_imm::unset_counter;
++         imm.exp = wait_imm::unset_counter;
++         imm.lgkm = wait_imm::unset_counter;
++      }
++   }
++
+    Builder bld(ctx.program, &instructions);
+    imm.build_waitcnt(bld);
+ }
+@@ -1082,6 +1104,18 @@ handle_block(Program* program, Block& block, wait_ctx& ctx)
+ 
+          if (is_ordered_count_acquire)
+             queued_imm.combine(ctx.bar[barrier_info_release_dep].imm[ffs(storage_gds) - 1]);
++
++         /* Ariel (Exynos 1580): Thermal efficiency in GPU spin-locks.
++          * When tight loops perform atomic operations (e.g. spin-locks / polling loops),
++          * insert an s_sleep 1 instruction after the atomic to throttle ALU switching power
++          * and prevent thermal runaway across Ariel's 2 WGPs.
++          */
++         if (program->family == CHIP_ARIEL &&
++             (block.kind & (block_kind_loop_header | block_kind_loop_latch)) &&
++             (sync_info.semantics & semantic_atomic)) {
++            Builder bld(program, &new_instructions);
++            bld.sopp(aco_opcode::s_sleep, 1);
++         }
+       }
+    }
+ 
+diff --git a/src/amd/compiler/aco_live_var_analysis.cpp b/src/amd/compiler/aco_live_var_analysis.cpp
+index bd8ad2e..51dee79 100644
+--- a/src/amd/compiler/aco_live_var_analysis.cpp
++++ b/src/amd/compiler/aco_live_var_analysis.cpp
+@@ -688,6 +688,18 @@ update_vgpr_sgpr_demand(Program* program, RegisterDemand new_demand)
+          std::min<uint16_t>(program->num_waves, program->dev.physical_vgprs / vgpr_demand);
+       program->num_waves = std::min(program->num_waves, program->dev.max_waves_per_simd);
+ 
++      /* For CHIP_ARIEL (Wave32): safely balance Fragment Shaders to target 8 to 10 waves per SIMD
++       * without forcing spilling to memory, reducing GPU stalls and latency. */
++      if (program->family == CHIP_ARIEL && program->wave_size == 32 &&
++          (program->info.hw_stage == AC_HW_PIXEL_SHADER || program->stage == fragment_fs)) {
++         uint16_t target_max = std::min<uint16_t>(10 * (program->gfx_level >= GFX10 ? 2 : 1),
++                                                  program->dev.max_waves_per_simd);
++         uint16_t target_min = 8 * (program->gfx_level >= GFX10 ? 2 : 1);
++         if (program->num_waves >= target_min && program->num_waves > target_max) {
++            program->num_waves = target_max;
++         }
++      }
++
+       /* Adjust for LDS, workgroup multiples and callee ABI, and calculate max_reg_demand */
+       program->num_waves = max_suitable_waves(program, program->num_waves);
+       if (program->is_callee) {
+diff --git a/src/amd/compiler/aco_scheduler.cpp b/src/amd/compiler/aco_scheduler.cpp
+index ffde2e4..6d2fe57 100644
+--- a/src/amd/compiler/aco_scheduler.cpp
++++ b/src/amd/compiler/aco_scheduler.cpp
+@@ -962,6 +962,19 @@ schedule_VMEM(sched_ctx& ctx, Block* block, Instruction* current, int idx)
+    bool only_clauses = false;
+    int16_t k = 0;
+ 
++   if (ctx.program->family == CHIP_ARIEL) {
++      /* For CHIP_ARIEL (Xclipse 540 / Exynos 1580), hide LPDDR5 high memory latency
++       * by conservatively expanding the scheduling window and move budget for texture
++       * sampling (MIMG / image_sample) instructions. This allows hoisting texture loads
++       * earlier across independent arithmetic without exceeding max_registers or
++       * reducing target num_waves / causing spilling. */
++      if (current->isMIMG()) {
++         window_size = std::max(window_size, 1024);
++         max_moves = std::max(max_moves, 256);
++         clause_max_grab_dist = std::max(clause_max_grab_dist, 32);
++      }
++   }
++
+    /* first, check if we have instructions before current to move down */
+    hazard_query indep_hq;
+    hazard_query clause_hq;
+@@ -1437,7 +1450,16 @@ schedule_program(Program* program)
+    int target_waves = std::max(wave_minimum, program->dev.physical_vgprs / vgpr_demand);
+    if (program->family == CHIP_ARIEL) {
+       /* Maximize target waves to ensure 100% occupancy across the 2 WGPs without drops */
+-      target_waves = std::max(target_waves, 8 * wave_factor);
++      int min_safe_waves = 8 * wave_factor;
++      if (program->wave_size == 32 &&
++          (program->info.hw_stage == AC_HW_PIXEL_SHADER || program->stage == fragment_fs)) {
++         /* Keep Fragment Shaders balanced between 8 and 10 waves per SIMD without spilling */
++         int max_safe_waves = std::min<int>(10 * wave_factor, (int)program->dev.max_waves_per_simd);
++         min_safe_waves = std::min<int>(min_safe_waves, max_safe_waves);
++         target_waves = std::clamp(target_waves, min_safe_waves, max_safe_waves);
++      } else {
++         target_waves = std::max(target_waves, min_safe_waves);
++      }
+    }
+    target_waves = max_suitable_waves(program, std::min<int>(program->num_waves, target_waves));
+    assert(target_waves >= program->min_waves);
+@@ -1445,8 +1467,11 @@ schedule_program(Program* program)
+    ctx.mv.max_registers = get_addr_regs_from_waves(program, target_waves);
+    ctx.mv.max_registers.vgpr -= 2;
+    if (program->family == CHIP_ARIEL) {
+-      /* Cap target VGPR limit in the scheduler to 36 to maintain high wave occupancy */
+-      ctx.mv.max_registers.vgpr = std::min<uint16_t>(ctx.mv.max_registers.vgpr, 36);
++      /* Cap target VGPR limit in the scheduler to prevent wave spill and maintain high occupancy */
++      bool is_shadow = (program->info.hw_stage == AC_HW_NEXT_GEN_GEOMETRY_SHADER) ||
++                       (program->info.hw_stage == AC_HW_PIXEL_SHADER && program->info.ps.num_inputs <= 1);
++      ctx.mv.max_registers.vgpr = aco_compiler_ariel_tune_vgpr_limit(
++         program->info.hw_stage, is_shadow, ctx.mv.max_registers.vgpr);
+    }
+ 
+    /* If this is a callee, don't use unneeded preserved VGPRs. */
+diff --git a/src/amd/compiler/aco_shader_info.c b/src/amd/compiler/aco_shader_info.c
+index c7cc77f..ebb905c 100644
+--- a/src/amd/compiler/aco_shader_info.c
++++ b/src/amd/compiler/aco_shader_info.c
+@@ -20,3 +20,21 @@ aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_siz
+ 
+    return 32;
+ }
++
++/*
++ * Shadow pass and register pressure optimizer for CHIP_ARIEL (Xclipse 540 / 2 WGPs):
++ * For Vertex (NGG) and Fragment shaders processing depth-only or shadow projection workloads,
++ * bounds the target VGPR limit to 32 registers in Wave32 mode. This prevents register
++ * bank exhaustion and eliminates costly spills to system memory across the 4 CUs.
++ */
++uint16_t
++aco_compiler_ariel_tune_vgpr_limit(enum ac_hw_stage hw_stage, bool is_shadow, uint16_t current_limit)
++{
++   if (is_shadow || hw_stage == AC_HW_NEXT_GEN_GEOMETRY_SHADER) {
++      /* Keep shadow pass vertex and depth-only shaders bounded to 32 VGPRs for maximum occupancy */
++      return (current_limit > 32) ? 32 : current_limit;
++   } else if (hw_stage == AC_HW_PIXEL_SHADER) {
++      return (current_limit > 40) ? 40 : current_limit;
++   }
++   return current_limit;
++}
+diff --git a/src/amd/compiler/aco_shader_info.h b/src/amd/compiler/aco_shader_info.h
+index 57e6111..0004011 100644
+--- a/src/amd/compiler/aco_shader_info.h
++++ b/src/amd/compiler/aco_shader_info.h
+@@ -274,6 +274,9 @@ uint8_t
+ aco_compiler_ariel_select_wave_size(unsigned workgroup_size, unsigned shared_size,
+                                     unsigned num_ubos, unsigned num_ssbos);
+ 
++uint16_t
++aco_compiler_ariel_tune_vgpr_limit(enum ac_hw_stage hw_stage, bool is_shadow, uint16_t current_limit);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp b/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp
+index 00fa48f..f4dde6f 100644
+--- a/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp
++++ b/src/amd/compiler/instruction_selection/aco_select_nir_intrinsics.cpp
+@@ -176,6 +176,24 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask, bo
+       if (dpp_ctrl != 0xffff)
+          return bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl, 0xf, 0xf, true,
+                              allow_fi);
++
++      /* On GFX11 / CHIP_ARIEL in Wave32, avoid LDS ds_swizzle for local lane shuffles
++       * by preferentially synthesizing with permlane16 / permlanex16 primitives. */
++      if ((ctx->options->gfx_level >= GFX11 || ctx->program->family == CHIP_ARIEL) &&
++          ctx->program->wave_size == 32) {
++         uint64_t lane_mask = 0;
++         for (unsigned i = 0; i < 16; i++)
++            lane_mask |= uint64_t((i & and_mask) ^ (xor_mask & 0xf)) << (i * 4);
++         Temp op1 = bld.copy(bld.def(s1), Operand::c32(lane_mask & 0xffffffff));
++         Temp op2 = bld.copy(bld.def(s1), Operand::c32(lane_mask >> 32));
++         Temp same = bld.vop3(aco_opcode::v_permlane16_b32, bld.def(v1), src, op1, op2);
++         Temp opp = bld.vop3(aco_opcode::v_permlanex16_b32, bld.def(v1), src, op1, op2);
++         Temp hi_mask = bld.copy(bld.def(bld.lm), Operand::c32(0xffff0000u));
++         if (xor_mask & 0x10)
++            return bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), opp, same, hi_mask);
++         else
++            return bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), same, opp, hi_mask);
++      }
+    }
+ 
+    return bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, mask, 0, false);
+@@ -3595,8 +3613,23 @@ emit_rotate_by_constant(isel_context* ctx, Temp& dst, Temp src, unsigned cluster
+    } else if (cluster_size == 16 && ctx->program->gfx_level >= GFX8) {
+       dst = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(rc), src, dpp_row_rr(16 - delta));
+    } else if (cluster_size <= 32 && ctx->program->gfx_level >= GFX8) {
+-      uint32_t ctrl = ds_pattern_rotate(delta, ~(cluster_size - 1) & 0x1f);
+-      dst = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, ctrl);
++      if (cluster_size == 32 && (ctx->program->gfx_level >= GFX11 || ctx->program->family == CHIP_ARIEL)) {
++         /* On GFX11 / CHIP_ARIEL (Wave32), prefer permlane16 / permlanex16 primitives over ds_swizzle */
++         uint64_t lane_mask = 0;
++         for (unsigned i = 0; i < 16; i++)
++            lane_mask |= uint64_t((i + delta) & 0xf) << (i * 4);
++         Temp op1 = bld.copy(bld.def(s1), Operand::c32(lane_mask & 0xffffffff));
++         Temp op2 = bld.copy(bld.def(s1), Operand::c32(lane_mask >> 32));
++         aco_opcode op_lo = ((delta & 0x10) ? aco_opcode::v_permlanex16_b32 : aco_opcode::v_permlane16_b32);
++         aco_opcode op_hi = ((delta & 0x10) ? aco_opcode::v_permlane16_b32 : aco_opcode::v_permlanex16_b32);
++         Temp r0 = bld.vop3(op_lo, bld.def(rc), src, op1, op2);
++         Temp r1 = bld.vop3(op_hi, bld.def(rc), src, op1, op2);
++         Temp hi_mask = bld.copy(bld.def(bld.lm), Operand::c32(0xffff0000u));
++         dst = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(rc), r0, r1, hi_mask);
++      } else {
++         uint32_t ctrl = ds_pattern_rotate(delta, ~(cluster_size - 1) & 0x1f);
++         dst = bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, ctrl);
++      }
+    } else if (cluster_size == 64) {
+       bool has_wf_dpp = ctx->program->gfx_level >= GFX8 && ctx->program->gfx_level < GFX10;
+       if (delta == 32 && ctx->program->gfx_level >= GFX11 && !ctx->program->dev.no_permlane64) {
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index fae9781..90feff6 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -84,9 +84,14 @@ get_nir_options_for_stage(struct radv_compiler_info *compiler_info, mesa_shader_
+    options->io_options |= nir_io_mediump_is_32bit | nir_io_radv_intrinsic_component_workaround;
+    options->varying_expression_max_cost = ac_nir_varying_expression_max_cost;
+ 
+-   /* On CHIP_ARIEL, lower mediump / RelaxedPrecision to fp16 to enable packed 16-bit vectorization */
++   /* On CHIP_ARIEL, lower mediump / RelaxedPrecision to fp16 to enable packed 16-bit vectorization
++    * and configure max_unroll_iterations = 32 to unroll small lighting/shadow loops on 2 WGPs. */
+    if (compiler_info->key.family == CHIP_ARIEL) {
+       options->preserve_mediump = false;
++      options->max_unroll_iterations = 32;
++      if (stage == MESA_SHADER_FRAGMENT || stage == MESA_SHADER_COMPUTE) {
++         options->vectorize_vec2_16bit = true;
++      }
+    }
+ }
+ 
+@@ -815,6 +820,13 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct
+    NIR_PASS(_, nir, nir_lower_global_vars_to_local);
+    NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+ 
++   if (compiler_info->key.family == CHIP_ARIEL &&
++       (nir->info.stage == MESA_SHADER_FRAGMENT ||
++        nir->info.stage == MESA_SHADER_COMPUTE)) {
++      NIR_PASS(_, nir, nir_lower_mediump_vars,
++               nir_var_function_temp | nir_var_shader_temp);
++   }
++
+    nir_lower_subgroups_options lower_subgroup_options = {
+       .subgroup_size = nir->info.api_subgroup_size,
+       .ballot_bit_size = nir->info.api_subgroup_size,
+@@ -853,6 +865,48 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct
+       NIR_PASS(_, nir, nir_opt_find_array_copies);
+       NIR_PASS(_, nir, nir_lower_vars_to_ssa);
+ 
++      if (compiler_info->key.family == CHIP_ARIEL) {
++         if (nir->info.stage == MESA_SHADER_FRAGMENT ||
++             nir->info.stage == MESA_SHADER_COMPUTE) {
++            NIR_PASS(_, nir, nir_opt_algebraic);
++            NIR_PASS(_, nir, nir_opt_constant_folding);
++         }
++
++         /* On CHIP_ARIEL (RDNA 3 / Xclipse 540), fold sampler return conversions to 16 bits
++          * for fragment shaders so TMUs emit native d16 image_sample instructions for mediump / fp16.
++          */
++         if (nir->info.stage == MESA_SHADER_FRAGMENT) {
++            struct nir_opt_tex_srcs_options opt_srcs_options[] = {
++               {
++                  .sampler_dims = ~(BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) | BITFIELD_BIT(GLSL_SAMPLER_DIM_BUF)),
++                  .src_types = (1 << nir_tex_src_coord) | (1 << nir_tex_src_lod) | (1 << nir_tex_src_bias) |
++                               (1 << nir_tex_src_min_lod) | (1 << nir_tex_src_ms_index) |
++                               (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
++               },
++               {
++                  .sampler_dims = ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE),
++                  .src_types = (1 << nir_tex_src_ddx) | (1 << nir_tex_src_ddy),
++               },
++            };
++            struct nir_opt_16bit_tex_image_options opt_16bit_options = {
++               .rounding_mode = nir_rounding_mode_undef,
++               .opt_tex_dest_types = nir_type_float | nir_type_int | nir_type_uint,
++               .opt_image_dest_types = nir_type_float | nir_type_int | nir_type_uint,
++               .integer_dest_saturates = true,
++               .opt_image_store_data = true,
++               .opt_image_srcs = true,
++               .opt_srcs_options_count = 2,
++               .opt_srcs_options = opt_srcs_options,
++            };
++            bool tex_opt_prog = false;
++            NIR_PASS(tex_opt_prog, nir, nir_opt_16bit_tex_image, &opt_16bit_options);
++            if (tex_opt_prog) {
++               NIR_PASS(_, nir, nir_opt_copy_prop);
++               NIR_PASS(_, nir, nir_opt_dce);
++            }
++         }
++      }
++
+       radv_optimize_nir(nir, false);
+ 
+       NIR_PASS(_, nir, nir_opt_scalar_array_vars_to_vec, nir_var_function_temp | nir_var_mem_shared);
+@@ -920,6 +974,20 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct
+       NIR_PASS(_, nir, nir_lower_vars_to_explicit_types, var_modes, shared_var_info);
+       NIR_PASS(_, nir, nir_lower_explicit_io, var_modes, nir_address_format_32bit_offset);
+ 
++      if (compiler_info->key.family == CHIP_ARIEL && nir->info.stage == MESA_SHADER_COMPUTE) {
++         /* Vectorize 64-bit / 128-bit LDS shared memory accesses into ds_read_b64 / ds_write_b64
++          * to minimize LDS bank conflicts across the 2 WGPs of Xclipse 540. */
++         nir_load_store_vectorize_options lds_vectorize_opts = {
++            .modes = nir_var_mem_shared,
++            .callback = ac_nir_mem_vectorize_callback,
++            .cb_data = &(struct ac_nir_config){compiler_info->ac->gfx_level, !compiler_info->key.use_llvm},
++            .robust_modes = 0,
++            .bounds_checked_modes = nir_var_mem_shared,
++            .has_shared2_amd = true,
++         };
++         NIR_PASS(_, nir, nir_opt_load_store_vectorize, &lds_vectorize_opts);
++      }
++
+       if (nir->info.zero_initialize_shared_memory && nir->info.shared_size > 0) {
+          const unsigned chunk_size = 16; /* max single store size */
+          const unsigned shared_size = align(nir->info.shared_size, chunk_size);

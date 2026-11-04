@@ -152,7 +152,7 @@ jobs:
             "name": "Custom RADV Xclipse 540 (Mesa ${MESA_VER})",
             "description": "Mesa RADV custom Vulkan driver for Samsung Exynos 1580 (Xclipse 540 / CHIP_ARIEL)",
             "author": "Antigravity & purwowd",
-            "packageVersion": "v3.2.0-SNAPDRAGON-EFFICIENCY",
+            "packageVersion": "v4.0.0-FINAL-PRODUCTION",
             "vendor": "Mesa/RADV",
             "driverVersion": "Vulkan 1.4.363",
             "vulkanVersion": "1.4.363",
@@ -185,37 +185,15 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.2.0-SNAPDRAGON-EFFICIENCY' }}
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.2.0-SNAPDRAGON-EFFICIENCY' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v4.0.0-FINAL-PRODUCTION' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v4.0.0-FINAL-PRODUCTION' }}"
           files: |
             Custom_RADV_Xclipse540.zip
-            patches/mesa/01-ariel-master-safe.patch
-            patches/mesa/02-ariel-fp16-d16-samplers.patch
-            patches/mesa/03-ariel-uma-zero-copy.patch
-            patches/mesa/04-ariel-ngg-shadow-fastpath.patch
-            patches/mesa/05-ariel-driconf-and-emu-exts.patch
-            patches/mesa/06-ariel-aco-clause-and-unroll.patch
-            patches/mesa/07-ariel-async-compute-balance.patch
-            patches/mesa/08-ariel-push-desc-fastpath.patch
-            patches/mesa/09-ariel-aco-vmem-latency-sched.patch
-            patches/mesa/10-ariel-lds-shared-mem-opt.patch
-            patches/mesa/11-ariel-conservative-early-z.patch
-            patches/mesa/12-ariel-cs-ib-prealloc.patch
-            patches/mesa/13-ariel-gfx11-dpp-subgroup-opt.patch
-            patches/mesa/14-ariel-pm4-redundant-state-filter.patch
-            patches/mesa/15-ariel-tc-compatible-fast-clear-opt.patch
-            patches/mesa/16-ariel-android-fast-disk-cache.patch
-            patches/mesa/17-ariel-pbb-tile-binning-thermal.patch
-            patches/mesa/18-ariel-gl2-cache-retention-policy.patch
-            patches/mesa/19-ariel-aco-waitcnt-alu-thermal.patch
-            patches/mesa/20-ariel-cpu-sync-thermal-pacing.patch
-            patches/mesa/21-ariel-vulkan-api-and-extensions-upgrade.patch
-            patches/mesa/22-ariel-cpu-big-little-thread-prio.patch
-            patches/mesa/23-ariel-native-astc-etc2-fastpath.patch
-            patches/mesa/24-ariel-safe-low-latency-cmd.patch
-            patches/mesa/25-ariel-hw-small-prim-filter-gpu-save.patch
-            patches/mesa/26-ariel-turnip-style-cpu-bind-fastpath.patch
-            patches/mesa/27-ariel-aco-wave32-occupancy-balance.patch
+            patches/mesa/01-ariel-wsi-drm-and-base-stability.patch
+            patches/mesa/02-ariel-memory-uma-gl2-and-formats.patch
+            patches/mesa/03-ariel-nir-aco-compiler-optimizations.patch
+            patches/mesa/04-ariel-rasterizer-shadows-and-cmd-fastpath.patch
+            patches/mesa/05-ariel-soc-thermal-pacing-and-driconf.patch
             patches/libdrm/01-libdrm-xclipse-mmr-cache.patch
             patches/libdrm/01-libdrm-xclipse-sgpu.patch
           generate_release_notes: true

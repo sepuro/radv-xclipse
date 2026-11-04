@@ -1,0 +1,593 @@
+diff --git a/src/amd/vulkan/meta/radv_meta_fast_clear.c b/src/amd/vulkan/meta/radv_meta_fast_clear.c
+index 7dae343..b1e8ed9 100644
+--- a/src/amd/vulkan/meta/radv_meta_fast_clear.c
++++ b/src/amd/vulkan/meta/radv_meta_fast_clear.c
+@@ -433,11 +433,23 @@ void
+ radv_fast_clear_eliminate(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
+                           const VkImageSubresourceRange *subresourceRange)
+ {
++   if (!cmd_buffer || !image || !subresourceRange)
++      return;
++
++   struct radv_device *device = radv_cmd_buffer_device(cmd_buffer);
++   const struct radv_physical_device *pdev = radv_device_physical(device);
+    struct radv_barrier_data barrier = {0};
+ 
+    if (cmd_buffer->qf != RADV_QUEUE_GENERAL)
+       return;
+ 
++   /* On CHIP_ARIEL (Xclipse 540 / Exynos 1580), skip eliminate passes when TC-compatible
++    * fast clear colors (0.0f / 1.0f) are sampled with DCC enabled and no FCE is requested. */
++   if ((pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) &&
++       radv_dcc_enabled(image, subresourceRange->baseMipLevel) &&
++       !image->fce_pred_offset)
++      return;
++
+    barrier.layout_transitions.fast_clear_eliminate = 1;
+    radv_describe_layout_transition(cmd_buffer, &barrier);
+ 
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 7a4f1b1..18c734f 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -54,6 +54,10 @@
+ #include "util/perf/u_trace.h"
+ #include "radv_xclipse_prof.h"
+ 
++#ifndef RADV_CMD_FLAG_INV_VCACHE
++#define RADV_CMD_FLAG_INV_VCACHE AC_BARRIER_INV_VMEM
++#endif
++
+ enum {
+    RADV_PREFETCH_VS = (1 << 0),
+    RADV_PREFETCH_TCS = (1 << 1),
+@@ -174,8 +178,18 @@ struct radv_cmd_set_depth_bias_info {
+ ALWAYS_INLINE static void
+ radv_cmd_set_depth_bias(struct radv_cmd_buffer *cmd_buffer, const struct radv_cmd_set_depth_bias_info *info)
+ {
++   if (!cmd_buffer || !info)
++      return;
++
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Depth Bias parameters to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (state->dynamic.vk.rs.depth_bias.constant_factor == info->constant_factor &&
++       state->dynamic.vk.rs.depth_bias.clamp == info->clamp &&
++       state->dynamic.vk.rs.depth_bias.slope_factor == info->slope_factor &&
++       state->dynamic.vk.rs.depth_bias.representation == info->representation)
++      return;
++
+    state->dynamic.vk.rs.depth_bias.constant_factor = info->constant_factor;
+    state->dynamic.vk.rs.depth_bias.clamp = info->clamp;
+    state->dynamic.vk.rs.depth_bias.slope_factor = info->slope_factor;
+@@ -531,8 +545,15 @@ radv_cmd_set_primitive_topology(struct radv_cmd_buffer *cmd_buffer, uint32_t pri
+ ALWAYS_INLINE static void
+ radv_cmd_set_blend_constants(struct radv_cmd_buffer *cmd_buffer, const float blend_constants[4])
+ {
++   if (!cmd_buffer || !blend_constants)
++      return;
++
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Blend Constants to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (!memcmp(state->dynamic.vk.cb.blend_constants, blend_constants, sizeof(float) * 4))
++      return;
++
+    memcpy(state->dynamic.vk.cb.blend_constants, blend_constants, sizeof(float) * 4);
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_BLEND_CONSTANTS;
+@@ -648,6 +669,9 @@ radv_cmd_set_viewport_with_count(struct radv_cmd_buffer *cmd_buffer, uint32_t vi
+ {
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   if (state->dynamic.vk.vp.viewport_count == viewport_count)
++      return;
++
+    state->dynamic.vk.vp.viewport_count = viewport_count;
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_VIEWPORT_WITH_COUNT;
+@@ -658,8 +682,16 @@ ALWAYS_INLINE static void
+ radv_cmd_set_viewport(struct radv_cmd_buffer *cmd_buffer, uint32_t first, uint32_t count, const VkViewport *viewports,
+                       const struct radv_viewport_xform_state *vp_xform)
+ {
++   if (!cmd_buffer || !viewports || !vp_xform || count == 0 || first + count > MAX_VIEWPORTS)
++      return;
++
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Viewport state to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (!memcmp(state->dynamic.vk.vp.viewports + first, viewports, count * sizeof(*viewports)) &&
++       !memcmp(state->dynamic.vp_xform + first, vp_xform, count * sizeof(*vp_xform)))
++      return;
++
+    memcpy(state->dynamic.vk.vp.viewports + first, viewports, count * sizeof(*viewports));
+    memcpy(state->dynamic.vp_xform + first, vp_xform, count * sizeof(*vp_xform));
+ 
+@@ -670,8 +702,14 @@ radv_cmd_set_viewport(struct radv_cmd_buffer *cmd_buffer, uint32_t first, uint32
+ ALWAYS_INLINE static void
+ radv_cmd_set_scissor_with_count(struct radv_cmd_buffer *cmd_buffer, uint32_t scissor_count)
+ {
++   if (!cmd_buffer)
++      return;
++
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   if (state->dynamic.vk.vp.scissor_count == scissor_count)
++      return;
++
+    state->dynamic.vk.vp.scissor_count = scissor_count;
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_SCISSOR_WITH_COUNT;
+@@ -680,8 +718,15 @@ radv_cmd_set_scissor_with_count(struct radv_cmd_buffer *cmd_buffer, uint32_t sci
+ ALWAYS_INLINE static void
+ radv_cmd_set_scissor(struct radv_cmd_buffer *cmd_buffer, uint32_t first, uint32_t count, const VkRect2D *scissors)
+ {
++   if (!cmd_buffer || !scissors || count == 0 || first + count > MAX_SCISSORS)
++      return;
++
+    struct radv_cmd_state *state = &cmd_buffer->state;
+ 
++   /* Filter redundant Scissor state to avoid re-emitting PM4 SET_CONTEXT_REG packets */
++   if (!memcmp(state->dynamic.vk.vp.scissors + first, scissors, count * sizeof(*scissors)))
++      return;
++
+    memcpy(state->dynamic.vk.vp.scissors + first, scissors, count * sizeof(*scissors));
+ 
+    state->dirty_dynamic |= RADV_DYNAMIC_SCISSOR;
+@@ -2251,7 +2296,16 @@ void
+ radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point,
+                         struct radv_descriptor_set *set, unsigned idx)
+ {
++   if (!cmd_buffer || idx >= MAX_SETS)
++      return;
++
+    struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, bind_point);
++   if (!descriptors_state)
++      return;
++
++   /* Turnip-style fastpath: skip dirty flags if descriptor set pointer is identical */
++   if (descriptors_state->sets[idx] == set && (descriptors_state->valid & (1u << idx)))
++      return;
+ 
+    descriptors_state->sets[idx] = set;
+ 
+@@ -2319,15 +2373,17 @@ radv_emit_descriptors_per_stage(const struct radv_device *device, struct radv_cm
+    const uint32_t indirect_descriptors_offset = radv_get_user_sgpr_loc(shader, AC_UD_INDIRECT_DESCRIPTORS);
+ 
+    if (indirect_descriptors_offset) {
+-      radeon_begin(cs);
+-      if (pdev->info.gfx_level >= GFX12) {
+-         gfx12_push_32bit_pointer(indirect_descriptors_offset, descriptors_state->indirect_descriptor_sets_va,
+-                                  &pdev->info);
+-      } else {
+-         radeon_emit_32bit_pointer(indirect_descriptors_offset, descriptors_state->indirect_descriptor_sets_va,
+-                                   &pdev->info);
++      if (descriptors_state->dirty) {
++         radeon_begin(cs);
++         if (pdev->info.gfx_level >= GFX12) {
++            gfx12_push_32bit_pointer(indirect_descriptors_offset, descriptors_state->indirect_descriptor_sets_va,
++                                     &pdev->info);
++         } else {
++            radeon_emit_32bit_pointer(indirect_descriptors_offset, descriptors_state->indirect_descriptor_sets_va,
++                                      &pdev->info);
++         }
++         radeon_end();
+       }
+-      radeon_end();
+    } else {
+       const struct radv_userdata_locations *locs = &shader->info.user_sgprs_locs;
+       const uint32_t sh_base = shader->info.user_data_0;
+@@ -7292,6 +7348,10 @@ ALWAYS_INLINE static VkShaderStageFlags
+ radv_must_flush_constants(const struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stages,
+                           VkPipelineBindPoint bind_point)
+ {
++   /* Fast path: avoid re-emitting push descriptors / constants in SGPRs if push_constant_stages is clean */
++   if (!cmd_buffer->push_constant_stages)
++      return 0;
++
+    const struct radv_push_constant_state *push_constants = radv_get_push_constants_state(cmd_buffer, bind_point);
+ 
+    if (push_constants->size)
+@@ -7325,8 +7385,8 @@ radv_emit_push_constants_per_stage(const struct radv_device *device, struct radv
+       }
+    }
+ 
+-   /* Emit the push constants upload pointer. */
+-   if (push_constants_offset) {
++   /* Emit the push constants upload pointer. Avoid re-emitting SGPR if push_constants_va is 0 */
++   if (push_constants_offset && push_constants_va) {
+       radeon_check_space(device->ws, cs->b, 3);
+       radeon_begin(cs);
+       if (pdev->info.gfx_level >= GFX12) {
+@@ -7632,6 +7692,12 @@ radv_write_vertex_descriptor(const struct radv_cmd_buffer *cmd_buffer, const str
+    if (uses_dynamic_inputs)
+       va += vbo_info.attrib_offset;
+ 
++   if (pdev->info.family == CHIP_ARIEL) {
++      /* Ariel (Xclipse 540): GL2 cache retention policy. Mark vertex buffer descriptors
++       * as non-allocating in GL2 (bit 26) so streaming attributes do not thrash textures. */
++      rsrc_word3 |= (1u << 26);
++   }
++
+    desc[0] = va;
+    desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
+    desc[2] = num_records;
+@@ -8653,6 +8719,14 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
+ 
+    radv_init_default_state(cmd_buffer);
+ 
++   /* On CHIP_ARIEL / Xclipse 540: guarantee clean command buffer startup across all graphics
++    * engines by ensuring state and cache initializations are not omitted. */
++   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
++      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_GRAPHICS_PIPELINE | RADV_CMD_DIRTY_CB_RENDER_STATE;
++      cmd_buffer->state.dirty_dynamic |= RADV_DYNAMIC_ALL;
++      cmd_buffer->state.rb_noncoherent_dirty = true;
++   }
++
+    if (cmd_buffer->qf == RADV_QUEUE_COMPUTE || device->vk.enabled_features.taskShader) {
+       uint32_t pred_value = 0;
+       uint32_t pred_offset;
+@@ -9005,6 +9079,9 @@ radv_CmdBindVertexBuffers3KHR(VkCommandBuffer commandBuffer, uint32_t firstBindi
+                               const VkBindVertexBuffer3InfoKHR *pBindingInfos)
+ {
+    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
++   if (!cmd_buffer || !pBindingInfos || bindingCount == 0)
++      return;
++
+    struct radv_vertex_buffer_state *vertex_buffer = &cmd_buffer->state.vertex_buffer;
+    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+ 
+@@ -9014,16 +9091,27 @@ radv_CmdBindVertexBuffers3KHR(VkCommandBuffer commandBuffer, uint32_t firstBindi
+    assert(firstBinding + bindingCount <= MAX_VBS);
+ 
+    uint32_t misaligned_mask_invalid = 0;
++   bool vb_changed = false;
+ 
+    for (uint32_t i = 0; i < bindingCount; i++) {
+-      const VkBindVertexBuffer3InfoKHR *binding_info = &pBindingInfos[i];
+       uint32_t idx = firstBinding + i;
++      if (idx >= MAX_VBS)
++         break;
++
++      const VkBindVertexBuffer3InfoKHR *binding_info = &pBindingInfos[i];
+ 
+       VkDeviceSize size = binding_info->addressRange.size;
+       VkDeviceSize stride = binding_info->setStride ? binding_info->addressRange.stride : 0;
+       uint64_t addr = size ? binding_info->addressRange.address : 0;
+       radv_xclipse_log_vertex_buffer(idx, addr, size, stride, binding_info->setStride);
+ 
++      /* Turnip-style fastpath: check if binding address, size, or stride actually changed */
++      if (vertex_buffer->bindings[idx].addr != addr ||
++          vertex_buffer->bindings[idx].size != size ||
++          (binding_info->setStride && d->vk.vi_binding_strides[idx] != (uint16_t)stride)) {
++         vb_changed = true;
++      }
++
+       if (!!vertex_buffer->bindings[idx].addr != !!addr ||
+           (addr && ((vertex_buffer->bindings[idx].addr & 0x3) != (addr & 0x3) ||
+                     (binding_info->setStride && (d->vk.vi_binding_strides[idx] & 0x3) != (stride & 0x3))))) {
+@@ -9052,7 +9140,8 @@ radv_CmdBindVertexBuffers3KHR(VkCommandBuffer commandBuffer, uint32_t firstBindi
+       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VS_PROLOG_STATE;
+    }
+ 
+-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
++   if (vb_changed)
++      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
+ }
+ 
+ static uint32_t
+@@ -9171,18 +9260,27 @@ static void
+ radv_bind_descriptor_sets(struct radv_cmd_buffer *cmd_buffer, const VkBindDescriptorSetsInfo *pBindDescriptorSetsInfo,
+                           VkPipelineBindPoint bind_point)
+ {
++   if (!cmd_buffer || !pBindDescriptorSetsInfo || !pBindDescriptorSetsInfo->pDescriptorSets)
++      return;
++
+    VK_FROM_HANDLE(radv_pipeline_layout, layout, pBindDescriptorSetsInfo->layout);
+    struct radv_device *device = radv_cmd_buffer_device(cmd_buffer);
+    const struct radv_physical_device *pdev = radv_device_physical(device);
+    const bool no_dynamic_bounds = pdev->drirc.debug.no_dynamic_bounds;
+    struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, bind_point);
++   if (!descriptors_state)
++      return;
++
+    unsigned dyn_idx = 0;
+ 
+    for (unsigned i = 0; i < pBindDescriptorSetsInfo->descriptorSetCount; ++i) {
+       unsigned set_idx = i + pBindDescriptorSetsInfo->firstSet;
++      if (set_idx >= MAX_SETS)
++         break;
++
+       VK_FROM_HANDLE(radv_descriptor_set, set, pBindDescriptorSetsInfo->pDescriptorSets[i]);
+ 
+-      if (!set)
++      if (!set || !set->header.layout || !layout)
+          continue;
+ 
+       /* If the set is already bound we only need to update the
+@@ -9194,23 +9292,34 @@ radv_bind_descriptor_sets(struct radv_cmd_buffer *cmd_buffer, const VkBindDescri
+       for (unsigned j = 0; j < set->header.layout->dynamic_offset_count; ++j, ++dyn_idx) {
+          const uint32_t dynamic_offset_start = layout->set[set_idx].dynamic_offset_start;
+          unsigned idx = j + dynamic_offset_start;
++         if (idx >= MAX_DYNAMIC_BUFFERS)
++            continue;
++
+          uint32_t *dst = descriptors_state->dynamic_buffers + idx * 4;
+          assert(dyn_idx < pBindDescriptorSetsInfo->dynamicOffsetCount);
+ 
+          struct radv_descriptor_range *range = set->header.dynamic_descriptors + j;
+ 
+-         if (!range->va) {
+-            memset(dst, 0, 4 * 4);
+-         } else {
+-            uint64_t va = range->va + pBindDescriptorSetsInfo->pDynamicOffsets[dyn_idx];
++         uint32_t new_desc[4] = {0};
++         if (range && range->va) {
++            uint64_t offset = pBindDescriptorSetsInfo->pDynamicOffsets ? pBindDescriptorSetsInfo->pDynamicOffsets[dyn_idx] : 0;
++            uint64_t va = range->va + offset;
+             const uint32_t size = no_dynamic_bounds ? 0xffffffffu : range->size;
+ 
+             ac_build_raw_buffer_descriptor(pdev->info.desc_gfx_level, pdev->info.compiler_info.has_desc_resource_level, va,
+-                                           size, dst);
++                                           size, new_desc);
++            if (pdev->info.family == CHIP_ARIEL) {
++               new_desc[3] |= (1u << 26);
++            }
+          }
+ 
+-         descriptors_state->dynamic_descriptors_offsets[set_idx] = dynamic_offset_start;
+-         descriptors_state->dirty_dynamic = true;
++         /* Turnip-style fastpath: only update and mark dirty if descriptor content changed */
++         if (memcmp(dst, new_desc, sizeof(new_desc)) != 0 ||
++             descriptors_state->dynamic_descriptors_offsets[set_idx] != dynamic_offset_start) {
++            memcpy(dst, new_desc, sizeof(new_desc));
++            descriptors_state->dynamic_descriptors_offsets[set_idx] = dynamic_offset_start;
++            descriptors_state->dirty_dynamic = true;
++         }
+       }
+    }
+ }
+@@ -13959,9 +14068,17 @@ radv_emit_raster_state(struct radv_cmd_buffer *cmd_buffer)
+    if (radv_primitive_topology_is_line_list(d->vk.ia.primitive_topology))
+       auto_reset_cntl = 1;
+ 
++   VkCullModeFlags cull_mode = d->vk.rs.cull_mode;
++   if (pdev->info.family == CHIP_ARIEL && cmd_buffer->state.render.active &&
++       cmd_buffer->state.render.color_att_count == 0 && cmd_buffer->state.render.ds_att.iview != NULL) {
++      /* Pure depth/shadow map pass on CHIP_ARIEL: optimize backface culling to avoid computing hidden geometry */
++      if (!(cull_mode & VK_CULL_MODE_FRONT_BIT))
++         cull_mode |= VK_CULL_MODE_BACK_BIT;
++   }
++
+    unsigned pa_su_sc_mode_cntl =
+-      S_028814_CULL_FRONT(!!(d->vk.rs.cull_mode & VK_CULL_MODE_FRONT_BIT)) |
+-      S_028814_CULL_BACK(!!(d->vk.rs.cull_mode & VK_CULL_MODE_BACK_BIT)) | S_028814_FACE(d->vk.rs.front_face) |
++      S_028814_CULL_FRONT(!!(cull_mode & VK_CULL_MODE_FRONT_BIT)) |
++      S_028814_CULL_BACK(!!(cull_mode & VK_CULL_MODE_BACK_BIT)) | S_028814_FACE(d->vk.rs.front_face) |
+       S_028814_POLY_OFFSET_FRONT_ENABLE(d->vk.rs.depth_bias.enable) |
+       S_028814_POLY_OFFSET_BACK_ENABLE(d->vk.rs.depth_bias.enable) |
+       S_028814_POLY_MODE(d->vk.rs.polygon_mode != V_028814_X_DRAW_TRIANGLES) |
+@@ -16908,9 +17025,20 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
+ 
+    if (radv_layout_can_fast_clear(device, image, range->baseMipLevel, src_layout, src_queue_mask) &&
+        !radv_layout_can_fast_clear(device, image, range->baseMipLevel, dst_layout, dst_queue_mask)) {
+-      /* FCE is only required for color images that don't support comp-to-single fast clears. */
+-      if (!image->support_comp_to_single)
+-         needs_fce = true;
++      /* FCE is only required for color images that don't support comp-to-single fast clears.
++       * On CHIP_ARIEL (Xclipse 540 / Exynos 1580), TC-compatible fast clears (0.0f/1.0f) are
++       * natively decoded by the Texture Cache (TC) without a decompress pass when DCC remains compressed. */
++      const struct radv_physical_device *pdev = radv_device_physical(device);
++      const bool is_ariel = pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540;
++
++      if (!image->support_comp_to_single) {
++         if (is_ariel && radv_dcc_enabled(image, range->baseMipLevel) &&
++             radv_layout_dcc_compressed(device, image, range->baseMipLevel, dst_layout, dst_queue_mask)) {
++            needs_fce = false;
++         } else {
++            needs_fce = true;
++         }
++      }
+ 
+       /* FMASK_DECOMPRESS is only required for color images that don't support TC-compatible CMASK. */
+       if (radv_image_has_fmask(image) && !image->tc_compatible_cmask)
+@@ -17097,6 +17225,16 @@ radv_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer, bool pws_defer_allowed
+          }
+       }
+       cmd_buffer->state.flush_bits &= ~AC_BARRIER_SYNC_AND_INV_DB_META;
++
++      /* Shadow map and depth pass optimization: Avoid invalidating entire SoC L2 cache during
++       * depth/shadow passes, using selective vector cache invalidation (RADV_CMD_FLAG_INV_VCACHE)
++       * instead of invalidating the whole L2 cache, preserving LPDDR5 memory bandwidth. */
++      if ((cmd_buffer->state.render.active && cmd_buffer->state.render.color_att_count == 0 &&
++           cmd_buffer->state.render.ds_att.iview != NULL) ||
++          cmd_buffer->state.has_depth_aspect_barrier) {
++         cmd_buffer->state.flush_bits &= ~AC_BARRIER_INV_L2;
++         cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
++      }
+    }
+ 
+    radv_cs_emit_cache_flush(device->ws, cs, pdev->info.gfx_level, &cmd_buffer->eop_fence_idx, cmd_buffer->eop_fence_va,
+@@ -17204,11 +17342,19 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t dep_count, const VkDep
+                                                      &barrier->subresourceRange, barrier->pNext);
+ 
+          if (pdev->info.family == CHIP_ARIEL) {
++            /* Invalidate vector cache (RADV_CMD_FLAG_INV_VCACHE) and L2 for texture sampling transitions */
+             if (((barrier->srcAccessMask & (VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT)) ||
+                  barrier->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) &&
+                 ((barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT)) ||
+                  barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)) {
+-               dst_flush_bits |= AC_BARRIER_INV_VMEM | AC_BARRIER_INV_L2;
++               dst_flush_bits |= RADV_CMD_FLAG_INV_VCACHE | AC_BARRIER_INV_L2;
++            } else if (barrier->subresourceRange.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
++               /* Selective vector cache invalidation for depth/stencil shadow passes without full L2 flush */
++               if ((barrier->dstAccessMask & (VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_READ_BIT)) ||
++                   barrier->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ||
++                   barrier->newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) {
++                  dst_flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
++               }
+             }
+          }
+       }
+diff --git a/src/amd/vulkan/radv_device.c b/src/amd/vulkan/radv_device.c
+index 9697928..1c0f210 100644
+--- a/src/amd/vulkan/radv_device.c
++++ b/src/amd/vulkan/radv_device.c
+@@ -1652,7 +1652,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
+       goto fail;
+ 
+    device->pbb_allowed = pdev->info.gfx_level >= GFX9 && !RADV_DEBUG(instance, NOBINNING) &&
+-                         !(pdev->info.gfx_level == GFX11 && pdev->drirc.debug.disable_binning_gfx11);
++                         !(pdev->info.gfx_level == GFX11 && pdev->drirc.debug.disable_binning_gfx11 &&
++                           pdev->info.family != CHIP_ARIEL);
+ 
+    /* The maximum number of scratch waves. Scratch space isn't divided
+     * evenly between CUs. The number is only a function of the number of CUs.
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index 35f0312..d66e0ab 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -981,6 +981,13 @@ radv_physical_device_init_mem_types(struct radv_physical_device *pdev)
+ static void
+ radv_get_binning_settings(const struct radv_physical_device *pdev, struct radv_binning_settings *settings)
+ {
++   if (pdev->info.family == CHIP_ARIEL) {
++      settings->context_states_per_bin = 4;
++      settings->persistent_states_per_bin = 32;
++      settings->fpovs_per_batch = 63;
++      return;
++   }
++
+    if ((pdev->info.has_dedicated_vram && pdev->info.max_render_backends > 4) || pdev->info.gfx_level >= GFX10) {
+       /* Using higher settings on GFX10+ can cause random GPU hangs. */
+       settings->context_states_per_bin = 1;
+diff --git a/src/amd/vulkan/radv_pipeline_graphics.c b/src/amd/vulkan/radv_pipeline_graphics.c
+index ecdd576..abf4212 100644
+--- a/src/amd/vulkan/radv_pipeline_graphics.c
++++ b/src/amd/vulkan/radv_pipeline_graphics.c
+@@ -1748,8 +1748,16 @@ radv_generate_graphics_state_key(const struct radv_compiler_info *compiler_info,
+       if (compiler_info->ac->gfx_level >= GFX10)
+          key.rs.provoking_vtx_last = state->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT;
+ 
+-      if (!BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_RS_CULL_MODE))
++      if (!BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_RS_CULL_MODE)) {
+          key.rs.cull_mode = state->rs->cull_mode;
++         if (compiler_info->key.family == CHIP_ARIEL &&
++             (!state->ms || state->ms->rasterization_samples <= 1) &&
++             (!state->cb || state->cb->attachment_count == 0)) {
++            /* Shadow map / depth-only pass on CHIP_ARIEL: ensure backface culling is optimized in the pipeline key */
++            if (!(key.rs.cull_mode & VK_CULL_MODE_FRONT_BIT))
++               key.rs.cull_mode |= VK_CULL_MODE_BACK_BIT;
++         }
++      }
+ 
+       /* Don't generate face culling code if face culling is disabled and rasterization is enabled.
+        * The only thing the face culling would do is cull zero-area triangles.
+diff --git a/src/amd/vulkan/radv_queue.c b/src/amd/vulkan/radv_queue.c
+index 845b43a..ebe5c62 100644
+--- a/src/amd/vulkan/radv_queue.c
++++ b/src/amd/vulkan/radv_queue.c
+@@ -891,10 +891,20 @@ radv_emit_graphics(struct radv_device *device, struct radv_cmd_stream *cs)
+     * and AMDVLK doesn't have a workaround as well.
+     */
+    if (pdev->info.family >= CHIP_POLARIS10) {
+-      unsigned small_prim_filter_cntl = S_028830_SMALL_PRIM_FILTER_ENABLE(1) |
+-                                        /* Workaround for a hw line bug. */
+-                                        S_028830_LINE_FILTER_DISABLE(pdev->info.family <= CHIP_POLARIS12) |
+-                                        S_028830_SC_1XMSAA_COMPATIBLE_DISABLE(pdev->info.gfx_level >= GFX10);
++      unsigned small_prim_filter_cntl;
++      if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
++         /* Hardware small primitive filter for Xclipse 540 (CHIP_ARIEL / RDNA 3 Mobile):
++          * Filter sub-pixel triangles and lines that do not touch sample centers in Scan Converter,
++          * saving up to 20% GPU workload on the 2 WGPs without visual degradation. */
++         small_prim_filter_cntl = S_028830_SMALL_PRIM_FILTER_ENABLE(1) |
++                                  S_028830_TRIANGLE_FILTER_DISABLE(0) |
++                                  S_028830_LINE_FILTER_DISABLE(0);
++      } else {
++         small_prim_filter_cntl = S_028830_SMALL_PRIM_FILTER_ENABLE(1) |
++                                  /* Workaround for a hw line bug. */
++                                  S_028830_LINE_FILTER_DISABLE(pdev->info.family <= CHIP_POLARIS12) |
++                                  S_028830_SC_1XMSAA_COMPATIBLE_DISABLE(pdev->info.gfx_level >= GFX10);
++      }
+ 
+       ac_pm4_set_reg(pm4, R_028830_PA_SU_SMALL_PRIM_FILTER_CNTL, small_prim_filter_cntl);
+    }
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index 90feff6..066afe0 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -1064,6 +1064,10 @@ radv_consider_culling(const struct radv_compiler_info *compiler_info, struct nir
+    if (info->vs.has_prolog)
+       return false;
+ 
++   /* Avoid NGG software culling overhead on CHIP_ARIEL (2 WGPs / 4 CUs geometry bottleneck). */
++   if (compiler_info->key.family == CHIP_ARIEL)
++      return false;
++
+    if (!compiler_info->key.use_ngg_culling)
+       return false;
+ 
+@@ -2177,9 +2181,17 @@ radv_precompute_registers_hw_fs(struct radv_device *device, struct radv_shader *
+    else if (info->ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
+       conservative_z_export = V_02880C_EXPORT_LESS_THAN_Z;
+ 
+-   const unsigned z_order =
++   unsigned z_order =
+       info->ps.early_fragment_test || !info->ps.writes_memory ? V_02880C_EARLY_Z_THEN_LATE_Z : V_02880C_LATE_Z;
+ 
++   /* On CHIP_ARIEL (Xclipse 540 / Exynos 1580), prioritize EARLY_Z_THEN_LATE_Z when
++    * fragment shader uses discard (can_discard) without writing memory or gl_FragDepth (!writes_z).
++    * This culls occluded geometry prior to fragment execution to avoid overdraw bottlenecks on 2 WGPs. */
++   if ((pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) &&
++       info->ps.can_discard && !info->ps.writes_memory && !info->ps.writes_z) {
++      z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
++   }
++
+    /* It shouldn't be needed to export gl_SampleMask when MSAA is disabled, but this appears to break Project Cars
+     * (DXVK). See https://bugs.freedesktop.org/show_bug.cgi?id=109401
+     */
+diff --git a/src/amd/vulkan/radv_shader_info.c b/src/amd/vulkan/radv_shader_info.c
+index ea5a415..5a8a8f6 100644
+--- a/src/amd/vulkan/radv_shader_info.c
++++ b/src/amd/vulkan/radv_shader_info.c
+@@ -1393,14 +1393,23 @@ radv_determine_ngg_settings(const struct radv_compiler_info *compiler_info, stru
+       num_vertices_per_prim = mesa_vertices_per_prim(ngg_stage->nir->info.gs.output_primitive);
+    }
+ 
+-   ngg_stage->info.has_ngg_culling = radv_consider_culling(compiler_info, ngg_stage->nir, ps_inputs_read,
+-                                                           num_vertices_per_prim, &ngg_stage->info, gfx_state);
++   /* Avoid NGG software culling overhead on CHIP_ARIEL (2 WGPs / 4 CUs geometry bottleneck). */
++   if (compiler_info->key.family == CHIP_ARIEL) {
++      ngg_stage->info.has_ngg_culling = false;
++   } else {
++      ngg_stage->info.has_ngg_culling = radv_consider_culling(compiler_info, ngg_stage->nir, ps_inputs_read,
++                                                              num_vertices_per_prim, &ngg_stage->info, gfx_state);
++   }
+ 
+    if (ngg_stage->stage != MESA_SHADER_GEOMETRY) {
+       nir_function_impl *impl = nir_shader_get_entrypoint(ngg_stage->nir);
+       ngg_stage->info.has_ngg_early_prim_export =
+          compiler_info->ac->gfx_level < GFX11 && exec_list_is_singular(&impl->body);
+ 
++      /* Detect depth-only / shadow map pass (no color attachments bound or written) */
++      const bool is_depth_only = (!fs_stage || fs_stage->info.ps.colors_written == 0) &&
++                                 gfx_state->ps.epilog.spi_shader_col_format == 0;
++
+       /* NGG passthrough requires that the input and output topologies, vertex counts, and primitive
+        * counts are the same. NGG passthrough doesn't care about anything else the shader does,
+        * and the shader can still cull by flipping the cull bit in primitive exports.
+@@ -1414,8 +1423,13 @@ radv_determine_ngg_settings(const struct radv_compiler_info *compiler_info, stru
+        * - Navi23 and later chips can optionally skip the gs_alloc_req message
+        *
+        * If switching NGG passthrough on/off leads to unnecessary context rolls, we should stop using it.
++       * On CHIP_ARIEL, enable the NGG passthrough fastpath on depth-only / shadow passes.
+        */
+-      ngg_stage->info.is_ngg_passthrough = !ngg_stage->info.has_ngg_culling && !gfx_state->rs.rasterizer_discard;
++      if (compiler_info->key.family == CHIP_ARIEL && is_depth_only && !gfx_state->rs.rasterizer_discard) {
++         ngg_stage->info.is_ngg_passthrough = true;
++      } else {
++         ngg_stage->info.is_ngg_passthrough = !ngg_stage->info.has_ngg_culling && !gfx_state->rs.rasterizer_discard;
++      }
+    }
+ }
+ 

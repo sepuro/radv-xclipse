@@ -1,0 +1,65 @@
+diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
+index ab10c1b..0d8a054 100644
+--- a/src/amd/vulkan/radv_image.c
++++ b/src/amd/vulkan/radv_image.c
+@@ -774,10 +774,11 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
+    if (image->vk.external_handle_types)
+       flags |= RADEON_SURF_SHAREABLE;
+ 
++   /* Force RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED for AHB and WSI scanout */
+    if (is_ahb_or_scanout) {
+       flags |= RADEON_SURF_DISABLE_DCC | RADEON_SURF_SCANOUT | RADEON_SURF_MODE_LINEAR_ALIGNED;
+    } else if (pdev->info.family == CHIP_ARIEL &&
+-              (image->vk.usage & (VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
++              (image->vk.usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_2_STORAGE_BIT_KHR | VK_IMAGE_USAGE_2_HOST_TRANSFER_BIT_KHR))) {
+       flags |= RADEON_SURF_DISABLE_DCC;
+    }
+ 
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index f94a483..f808df9 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -3421,9 +3421,10 @@ radv_enumerate_physical_devices(struct vk_instance *vk_instance)
+    /* SELinux fallback for Android:
+     * Android untrusted_app or emulators are frequently blocked by SELinux policy from listing /dev/dri
+     * (drmGetDevices2 returns <= 0), but direct open of /dev/dri/renderD128 is permitted.
+-    * If no devices were found via drmGetDevices2, open /dev/dri/renderD128 directly.
++    * If no devices were found via drmGetDevices2, fallback to /dev/dri/renderD128 directly.
+     */
+    if (list_is_empty(&vk_instance->physical_devices.list)) {
++      /* Fallback to /dev/dri/renderD128 directly */
+       int fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC);
+       if (fd >= 0) {
+          drmDevicePtr dev_ptr = NULL;
+diff --git a/src/util/compress.c b/src/util/compress.c
+index 1f4b429..4dffdd8 100644
+--- a/src/util/compress.c
++++ b/src/util/compress.c
+@@ -43,7 +43,13 @@
+ #include "macros.h"
+ 
+ /* 3 is the recomended level, with 22 as the absolute maximum */
++#ifdef ANDROID
++#define ZSTD_COMPRESSION_LEVEL 1
++#define ZLIB_COMPRESSION_LEVEL 1
++#else
+ #define ZSTD_COMPRESSION_LEVEL 3
++#define ZLIB_COMPRESSION_LEVEL Z_BEST_COMPRESSION
++#endif
+ 
+ size_t
+ util_compress_max_compressed_len(size_t in_data_size)
+@@ -96,7 +102,13 @@ util_compress_deflate(const uint8_t *in_data, size_t in_data_size,
+    strm.avail_in = in_data_size;
+    strm.avail_out = out_buff_size;
+ 
++#ifdef ANDROID
++   /* On Android (Exynos 1580 / Cortex-A720), use fast compression level (1)
++    * to minimize CPU overhead when writing shader entries to disk cache during gameplay. */
++   int ret = deflateInit(&strm, ZLIB_COMPRESSION_LEVEL);
++#else
+    int ret = deflateInit(&strm, Z_BEST_COMPRESSION);
++#endif
+    if (ret != Z_OK) {
+        (void) deflateEnd(&strm);
+        return 0;
