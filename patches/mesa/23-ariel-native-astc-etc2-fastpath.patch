@@ -1,0 +1,46 @@
+diff --git a/src/amd/vulkan/radv_formats.c b/src/amd/vulkan/radv_formats.c
+index ea15dd4..5596677 100644
+--- a/src/amd/vulkan/radv_formats.c
++++ b/src/amd/vulkan/radv_formats.c
+@@ -449,6 +449,12 @@ radv_xclipse_is_native_etc2(const struct radv_physical_device *pdev, VkFormat fo
+ bool
+ radv_is_format_emulated(const struct radv_physical_device *pdev, VkFormat format)
+ {
++   /* For CHIP_ARIEL / Xclipse 540, native ASTC LDR and ETC2/EAC formats are
++    * decoded directly by the TMU hardware units and must never fall back to
++    * slow software/compute-shader emulation. */
++   if (radv_xclipse_is_native_astc(pdev, format) || radv_xclipse_is_native_etc2(pdev, format))
++      return false;
++
+    if (pdev->emulate_etc2 && vk_texcompress_etc2_emulation_format(format) != VK_FORMAT_UNDEFINED)
+       return true;
+ 
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index a79df44..cdbdc34 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -1353,8 +1353,8 @@ radv_physical_device_get_features(const struct radv_physical_device *pdev, struc
+       .alphaToOne = true,
+       .multiViewport = true,
+       .samplerAnisotropy = true,
+-      .textureCompressionETC2 = pdev->info.has_etc_support || pdev->emulate_etc2 || pdev->xclipse_native_etc2,
+-      .textureCompressionASTC_LDR = pdev->emulate_astc || pdev->xclipse_native_astc,
++      .textureCompressionETC2 = pdev->info.has_etc_support || pdev->emulate_etc2 || pdev->xclipse_native_etc2 || pdev->info.family == CHIP_ARIEL,
++      .textureCompressionASTC_LDR = pdev->emulate_astc || pdev->xclipse_native_astc || pdev->info.family == CHIP_ARIEL,
+       /* The feature covers all BC formats; Xclipse 920/540 decodes only BC1-BC3 in hardware, so it
+        * needs the BC4-BC7 GPU decoder. */
+       .textureCompressionBC = !pdev->info.gfx11_shader_core || pdev->emulate_bc || pdev->info.family == CHIP_ARIEL,
+@@ -3159,6 +3159,13 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
+    pdev->emulate_astc = pdev->drirc.features.require_astc;
+ #endif
+ 
++   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
++      pdev->xclipse_native_astc = true;
++      pdev->xclipse_native_etc2 = true;
++      pdev->emulate_astc = false;
++      pdev->emulate_etc2 = false;
++   }
++
+    const char *name = ac_get_gpu_display_name(&pdev->info);
+    snprintf(pdev->name, sizeof(pdev->name), "AMD RADV %s%s", name, radv_get_compiler_string(pdev));
+    snprintf(pdev->marketing_name, sizeof(pdev->name), "%s (RADV %s%s)", pdev->info.marketing_name, name,

@@ -87,7 +87,8 @@ jobs:
           [built-in options]
           c_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer', '-fvisibility=hidden']
           cpp_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer', '-fvisibility=hidden']
-          cpp_link_args = ['-static-libstdc++']
+          c_link_args = ['-Wl,-z,max-page-size=16384']
+          cpp_link_args = ['-static-libstdc++', '-Wl,-z,max-page-size=16384']
 
           [host_machine]
           system = 'android'
@@ -138,10 +139,10 @@ jobs:
 
       - name: Strip Symbols and Package Driver for AdrenoTools
         run: |
-          NDK_BIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
           mkdir -p dist
 
-          "${NDK_BIN}/llvm-strip" --strip-all -o dist/vulkan.radeon.so build-android/src/amd/vulkan/libvulkan_radeon.so
+          "${NDK_TOOLCHAIN}/llvm-strip" --strip-unneeded -o dist/vulkan.radeon.so build-android/src/amd/vulkan/libvulkan_radeon.so
 
           MESA_VER=$(cat VERSION 2>/dev/null || echo "24.2.0-devel")
 
@@ -151,7 +152,7 @@ jobs:
             "name": "Custom RADV Xclipse 540 (Mesa ${MESA_VER})",
             "description": "Mesa RADV custom Vulkan driver for Samsung Exynos 1580 (Xclipse 540 / CHIP_ARIEL)",
             "author": "Antigravity & purwowd",
-            "packageVersion": "2.5.0",
+            "packageVersion": "v3.0.0-GOLD-MASTER",
             "vendor": "Mesa/RADV",
             "driverVersion": "Vulkan 1.4.363",
             "vulkanVersion": "1.4.363",
@@ -184,8 +185,8 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.5.0-vulkan-next' }}
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.5.0-vulkan-next' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.0.0-GOLD-MASTER' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.0.0-GOLD-MASTER' }}"
           files: |
             Custom_RADV_Xclipse540.zip
             patches/mesa/01-ariel-master-safe.patch
@@ -209,6 +210,8 @@ jobs:
             patches/mesa/19-ariel-aco-waitcnt-alu-thermal.patch
             patches/mesa/20-ariel-cpu-sync-thermal-pacing.patch
             patches/mesa/21-ariel-vulkan-api-and-extensions-upgrade.patch
+            patches/mesa/22-ariel-cpu-big-little-thread-prio.patch
+            patches/mesa/23-ariel-native-astc-etc2-fastpath.patch
             patches/libdrm/01-libdrm-xclipse-mmr-cache.patch
             patches/libdrm/01-libdrm-xclipse-sgpu.patch
           generate_release_notes: true

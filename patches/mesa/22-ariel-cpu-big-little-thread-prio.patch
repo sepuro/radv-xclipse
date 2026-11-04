@@ -1,0 +1,22 @@
+diff --git a/src/util/u_queue.c b/src/util/u_queue.c
+index 29cd154..7b5820f 100644
+--- a/src/util/u_queue.c
++++ b/src/util/u_queue.c
+@@ -430,6 +430,17 @@ util_queue_init(struct util_queue *queue,
+ 
+    memset(queue, 0, sizeof(*queue));
+ 
++#if defined(ANDROID) || defined(__ANDROID__)
++   /* On Android big.LITTLE architectures (Samsung Exynos 1580 / CHIP_ARIEL:
++    * 4x Cortex-A720 performance cores + 4x Cortex-A520 efficiency cores),
++    * ensure auxiliary worker queues (such as disk cache writer and background
++    * shader compilation queues) run with minimum CPU priority (nice 19 / SCHED_BATCH)
++    * so they execute on Cortex-A520 efficiency cores and never steal clock cycles
++    * from Cortex-A720 cores that sustain game framerates.
++    */
++   flags |= UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY;
++#endif
++
+    if (process_len) {
+       snprintf(queue->name, sizeof(queue->name), "%.*s:%s",
+                process_len, process_name, name);
