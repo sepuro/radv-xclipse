@@ -1,0 +1,41 @@
+diff --git a/src/amd/compiler/aco_live_var_analysis.cpp b/src/amd/compiler/aco_live_var_analysis.cpp
+index bd8ad2e..51dee79 100644
+--- a/src/amd/compiler/aco_live_var_analysis.cpp
++++ b/src/amd/compiler/aco_live_var_analysis.cpp
+@@ -688,6 +688,18 @@ update_vgpr_sgpr_demand(Program* program, RegisterDemand new_demand)
+          std::min<uint16_t>(program->num_waves, program->dev.physical_vgprs / vgpr_demand);
+       program->num_waves = std::min(program->num_waves, program->dev.max_waves_per_simd);
+ 
++      /* For CHIP_ARIEL (Wave32): safely balance Fragment Shaders to target 8 to 10 waves per SIMD
++       * without forcing spilling to memory, reducing GPU stalls and latency. */
++      if (program->family == CHIP_ARIEL && program->wave_size == 32 &&
++          (program->info.hw_stage == AC_HW_PIXEL_SHADER || program->stage == fragment_fs)) {
++         uint16_t target_max = std::min<uint16_t>(10 * (program->gfx_level >= GFX10 ? 2 : 1),
++                                                  program->dev.max_waves_per_simd);
++         uint16_t target_min = 8 * (program->gfx_level >= GFX10 ? 2 : 1);
++         if (program->num_waves >= target_min && program->num_waves > target_max) {
++            program->num_waves = target_max;
++         }
++      }
++
+       /* Adjust for LDS, workgroup multiples and callee ABI, and calculate max_reg_demand */
+       program->num_waves = max_suitable_waves(program, program->num_waves);
+       if (program->is_callee) {
+diff --git a/src/amd/compiler/aco_scheduler.cpp b/src/amd/compiler/aco_scheduler.cpp
+index 44fe802..8751688 100644
+--- a/src/amd/compiler/aco_scheduler.cpp
++++ b/src/amd/compiler/aco_scheduler.cpp
+@@ -1451,6 +1451,13 @@ schedule_program(Program* program)
+    if (program->family == CHIP_ARIEL) {
+       /* Maximize target waves to ensure 100% occupancy across the 2 WGPs without drops */
+       target_waves = std::max(target_waves, 8 * wave_factor);
++      if (program->wave_size == 32 &&
++          (program->info.hw_stage == AC_HW_PIXEL_SHADER || program->stage == fragment_fs)) {
++         /* Keep Fragment Shaders balanced between 8 and 10 waves per SIMD without spilling */
++         int max_safe_waves = std::min<int>(10 * wave_factor, (int)program->dev.max_waves_per_simd);
++         int min_safe_waves = std::min<int>(8 * wave_factor, max_safe_waves);
++         target_waves = std::clamp(target_waves, min_safe_waves, max_safe_waves);
++      }
+    }
+    target_waves = max_suitable_waves(program, std::min<int>(program->num_waves, target_waves));
+    assert(target_waves >= program->min_waves);

@@ -1,0 +1,80 @@
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 44a61e2..943aeb9 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -2283,6 +2283,10 @@ radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint
+ {
+    struct radv_descriptor_state *descriptors_state = radv_get_descriptors_state(cmd_buffer, bind_point);
+ 
++   /* Turnip-style fastpath: skip dirty flags if descriptor set pointer is identical */
++   if (descriptors_state->sets[idx] == set && (descriptors_state->valid & (1u << idx)))
++      return;
++
+    descriptors_state->sets[idx] = set;
+ 
+    descriptors_state->valid |= (1u << idx); /* active descriptors */
+@@ -9064,6 +9068,7 @@ radv_CmdBindVertexBuffers3KHR(VkCommandBuffer commandBuffer, uint32_t firstBindi
+    assert(firstBinding + bindingCount <= MAX_VBS);
+ 
+    uint32_t misaligned_mask_invalid = 0;
++   bool vb_changed = false;
+ 
+    for (uint32_t i = 0; i < bindingCount; i++) {
+       const VkBindVertexBuffer3InfoKHR *binding_info = &pBindingInfos[i];
+@@ -9074,6 +9079,13 @@ radv_CmdBindVertexBuffers3KHR(VkCommandBuffer commandBuffer, uint32_t firstBindi
+       uint64_t addr = size ? binding_info->addressRange.address : 0;
+       radv_xclipse_log_vertex_buffer(idx, addr, size, stride, binding_info->setStride);
+ 
++      /* Turnip-style fastpath: check if binding address, size, or stride actually changed */
++      if (vertex_buffer->bindings[idx].addr != addr ||
++          vertex_buffer->bindings[idx].size != size ||
++          (binding_info->setStride && d->vk.vi_binding_strides[idx] != (uint16_t)stride)) {
++         vb_changed = true;
++      }
++
+       if (!!vertex_buffer->bindings[idx].addr != !!addr ||
+           (addr && ((vertex_buffer->bindings[idx].addr & 0x3) != (addr & 0x3) ||
+                     (binding_info->setStride && (d->vk.vi_binding_strides[idx] & 0x3) != (stride & 0x3))))) {
+@@ -9102,7 +9114,8 @@ radv_CmdBindVertexBuffers3KHR(VkCommandBuffer commandBuffer, uint32_t firstBindi
+       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VS_PROLOG_STATE;
+    }
+ 
+-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
++   if (vb_changed)
++      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
+ }
+ 
+ static uint32_t
+@@ -9249,21 +9262,25 @@ radv_bind_descriptor_sets(struct radv_cmd_buffer *cmd_buffer, const VkBindDescri
+ 
+          struct radv_descriptor_range *range = set->header.dynamic_descriptors + j;
+ 
+-         if (!range->va) {
+-            memset(dst, 0, 4 * 4);
+-         } else {
++         uint32_t new_desc[4] = {0};
++         if (range->va) {
+             uint64_t va = range->va + pBindDescriptorSetsInfo->pDynamicOffsets[dyn_idx];
+             const uint32_t size = no_dynamic_bounds ? 0xffffffffu : range->size;
+ 
+             ac_build_raw_buffer_descriptor(pdev->info.desc_gfx_level, pdev->info.compiler_info.has_desc_resource_level, va,
+-                                           size, dst);
++                                           size, new_desc);
+             if (pdev->info.family == CHIP_ARIEL) {
+-               dst[3] |= (1u << 26);
++               new_desc[3] |= (1u << 26);
+             }
+          }
+ 
+-         descriptors_state->dynamic_descriptors_offsets[set_idx] = dynamic_offset_start;
+-         descriptors_state->dirty_dynamic = true;
++         /* Turnip-style fastpath: only update and mark dirty if descriptor content changed */
++         if (memcmp(dst, new_desc, sizeof(new_desc)) != 0 ||
++             descriptors_state->dynamic_descriptors_offsets[set_idx] != dynamic_offset_start) {
++            memcpy(dst, new_desc, sizeof(new_desc));
++            descriptors_state->dynamic_descriptors_offsets[set_idx] = dynamic_offset_start;
++            descriptors_state->dirty_dynamic = true;
++         }
+       }
+    }
+ }

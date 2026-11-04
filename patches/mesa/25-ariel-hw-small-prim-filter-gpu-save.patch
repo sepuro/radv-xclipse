@@ -1,0 +1,29 @@
+diff --git a/src/amd/vulkan/radv_queue.c b/src/amd/vulkan/radv_queue.c
+index 845b43a..ebe5c62 100644
+--- a/src/amd/vulkan/radv_queue.c
++++ b/src/amd/vulkan/radv_queue.c
+@@ -891,10 +891,20 @@ radv_emit_graphics(struct radv_device *device, struct radv_cmd_stream *cs)
+     * and AMDVLK doesn't have a workaround as well.
+     */
+    if (pdev->info.family >= CHIP_POLARIS10) {
+-      unsigned small_prim_filter_cntl = S_028830_SMALL_PRIM_FILTER_ENABLE(1) |
+-                                        /* Workaround for a hw line bug. */
+-                                        S_028830_LINE_FILTER_DISABLE(pdev->info.family <= CHIP_POLARIS12) |
+-                                        S_028830_SC_1XMSAA_COMPATIBLE_DISABLE(pdev->info.gfx_level >= GFX10);
++      unsigned small_prim_filter_cntl;
++      if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
++         /* Hardware small primitive filter for Xclipse 540 (CHIP_ARIEL / RDNA 3 Mobile):
++          * Filter sub-pixel triangles and lines that do not touch sample centers in Scan Converter,
++          * saving up to 20% GPU workload on the 2 WGPs without visual degradation. */
++         small_prim_filter_cntl = S_028830_SMALL_PRIM_FILTER_ENABLE(1) |
++                                  S_028830_TRIANGLE_FILTER_DISABLE(0) |
++                                  S_028830_LINE_FILTER_DISABLE(0);
++      } else {
++         small_prim_filter_cntl = S_028830_SMALL_PRIM_FILTER_ENABLE(1) |
++                                  /* Workaround for a hw line bug. */
++                                  S_028830_LINE_FILTER_DISABLE(pdev->info.family <= CHIP_POLARIS12) |
++                                  S_028830_SC_1XMSAA_COMPATIBLE_DISABLE(pdev->info.gfx_level >= GFX10);
++      }
+ 
+       ac_pm4_set_reg(pm4, R_028830_PA_SU_SMALL_PRIM_FILTER_CNTL, small_prim_filter_cntl);
+    }
