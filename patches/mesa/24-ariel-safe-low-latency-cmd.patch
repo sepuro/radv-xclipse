@@ -1,0 +1,41 @@
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index b01327c..e06f4aa 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -8695,6 +8695,14 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
+ 
+    radv_init_default_state(cmd_buffer);
+ 
++   /* On CHIP_ARIEL / Xclipse 540: guarantee clean command buffer startup across all graphics
++    * engines by ensuring state and cache initializations are not omitted. */
++   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
++      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_FRAMEBUFFER;
++      cmd_buffer->state.dirty_dynamic |= RADV_DYNAMIC_ALL;
++      cmd_buffer->state.rb_noncoherent_dirty = true;
++   }
++
+    if (cmd_buffer->qf == RADV_QUEUE_COMPUTE || device->vk.enabled_features.taskShader) {
+       uint32_t pred_value = 0;
+       uint32_t pred_offset;
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index cdbdc34..0a9fb0b 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -2773,9 +2773,14 @@ radv_get_physical_device_properties(struct radv_physical_device *pdev)
+    memcpy(p->driverUUID, pdev->driver_uuid, VK_UUID_SIZE);
+    memset(p->deviceLUID, 0, VK_LUID_SIZE);
+ 
+-   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
+-   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1 "%s",
+-            radv_get_compiler_string(pdev));
++   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
++      snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "Mesa RADV Xclipse 540 (v3.0.1-HOTFIX-STABLE)");
++      snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa RADV Xclipse 540 (v3.0.1-HOTFIX-STABLE)");
++   } else {
++      snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
++      snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1 "%s",
++               radv_get_compiler_string(pdev));
++   }
+ 
+    p->conformanceVersion = (VkConformanceVersion){
+       .major = 1,

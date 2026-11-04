@@ -152,7 +152,7 @@ jobs:
             "name": "Custom RADV Xclipse 540 (Mesa ${MESA_VER})",
             "description": "Mesa RADV custom Vulkan driver for Samsung Exynos 1580 (Xclipse 540 / CHIP_ARIEL)",
             "author": "Antigravity & purwowd",
-            "packageVersion": "v3.0.0-GOLD-MASTER",
+            "packageVersion": "v3.0.1-HOTFIX-STABLE",
             "vendor": "Mesa/RADV",
             "driverVersion": "Vulkan 1.4.363",
             "vulkanVersion": "1.4.363",
@@ -185,8 +185,8 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.0.0-GOLD-MASTER' }}
-          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.0.0-GOLD-MASTER' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.0.1-HOTFIX-STABLE' }}
+          name: "Custom RADV Driver for Samsung Xclipse 540 (Exynos 1580) ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v3.0.1-HOTFIX-STABLE' }}"
           files: |
             Custom_RADV_Xclipse540.zip
             patches/mesa/01-ariel-master-safe.patch
@@ -212,6 +212,7 @@ jobs:
             patches/mesa/21-ariel-vulkan-api-and-extensions-upgrade.patch
             patches/mesa/22-ariel-cpu-big-little-thread-prio.patch
             patches/mesa/23-ariel-native-astc-etc2-fastpath.patch
+            patches/mesa/24-ariel-safe-low-latency-cmd.patch
             patches/libdrm/01-libdrm-xclipse-mmr-cache.patch
             patches/libdrm/01-libdrm-xclipse-sgpu.patch
           generate_release_notes: true

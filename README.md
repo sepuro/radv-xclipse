@@ -1,7 +1,7 @@
 # Custom Mesa RADV Vulkan Driver — Samsung Xclipse 540 (Exynos 1580 / CHIP_ARIEL)
 
 [![Build RADV Xclipse 540](https://github.com/sepuro/radv-xclipse/actions/workflows/build-radv-xclipse.yml/badge.svg)](https://github.com/sepuro/radv-xclipse/actions/workflows/build-radv-xclipse.yml)
-[![Release](https://img.shields.io/badge/Release-v3.0.0--GOLD--MASTER-gold.svg?style=flat-square&logo=github)](https://github.com/sepuro/radv-xclipse/releases/tag/v3.0.0-GOLD-MASTER)
+[![Release](https://img.shields.io/badge/Release-v3.0.1--HOTFIX--STABLE-brightgreen.svg?style=flat-square&logo=github)](https://github.com/sepuro/radv-xclipse/releases/tag/v3.0.1-HOTFIX-STABLE)
 [![Vulkan API](https://img.shields.io/badge/Vulkan-1.4.363-red.svg?style=flat-square&logo=vulkan)](https://www.vulkan.org/)
 [![Architecture](https://img.shields.io/badge/Architecture-RDNA%203%20Mobile%20%2F%20GFX11-blue.svg?style=flat-square&logo=amd)](https://www.amd.com/)
 [![GPU Hardware](https://img.shields.io/badge/GPU-Xclipse%20540%20(2%20WGPs)-orange.svg?style=flat-square)](https://semiconductor.samsung.com/)
@@ -33,7 +33,7 @@ flowchart TD
         A3["Emuladores (Citron / Eden / Winlator / Mobox / Vita3K)"]
     end
 
-    subgraph DRIVER["Mesa RADV Driver Core (v3.0.0-GOLD-MASTER)"]
+    subgraph DRIVER["Mesa RADV Driver Core (v3.0.1-HOTFIX-STABLE)"]
         B1["Vulkan 1.4 Entrypoints & Extension Router"]
         B2["Perfiles Driconf (vk_dont_care_as_load, emu_exts)"]
         B3["Filtro de Paquetes PM4 Redundantes (Viewport/Scissor/Blend)"]
@@ -140,6 +140,13 @@ La capa final corona la edición **Gold Master** garantizando soporte para los e
 | **22** | `22-ariel-cpu-big-little-thread-prio.patch` | Work Queues / CPU Scheduling | Afinación `big.LITTLE` del pool de compilación asíncrona (`UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY` / `nice 19` / `SCHED_BATCH`). | Confina la compilación en segundo plano y escritura de disco a los núcleos de eficiencia **Cortex-A520**, blindando los FPS en los **Cortex-A720**. |
 | **23** | `23-ariel-native-astc-etc2-fastpath.patch` | Formats / TMU Decoder | Decodificación nativa por hardware de formatos móviles **ASTC LDR** y **ETC2** en las TMUs de la Xclipse 540, forzando `radv_is_format_emulated = false`. | Muestreo de texturas comprimidas nativo a velocidad de silicio sin incurrir en lenta emulación por compute shaders. |
 
+### Capa 6: Arranque Seguro de Baja Latencia y Estabilidad Hotfix (Parche `24`)
+Esta capa aplica el hotfix **v3.0.1-HOTFIX-STABLE**, revirtiendo modificaciones invasivas de WSI y compilador para restablecer la compatibilidad instantánea al 100% en todos los motores de juegos y emuladores, incorporando el Parche 24 seguro.
+
+| Parche | Archivo | Subsistema | Modificación Técnica Clave | Impacto en Rendimiento / Estabilidad |
+|---|---|---|---|---|
+| **24** | `24-ariel-safe-low-latency-cmd.patch` | Command Buffer / Physical Device | Limpieza e inicialización incondicional de estado y coherencia (`RADV_CMD_DIRTY_PIPELINE`, `RADV_CMD_DIRTY_FRAMEBUFFER`, `RADV_DYNAMIC_ALL`, `rb_noncoherent_dirty = true`) al inicio de cada Command Buffer en `radv_BeginCommandBuffer`, y reporte de versión `v3.0.1-HOTFIX-STABLE` en `driverInfo` / `driverName` sin alterar estructuras de features ni extensiones. | Garantiza arranque instantáneo e inmaculado de juegos y emuladores (Winlator, Eden, Citron, Mobox) eliminando fallos en la primera llamada de dibujo (*draw call*). |
+
 ### Parches de Kernel (`patches/libdrm/`)
 
 | Parche | Archivo | Modificación Técnica Clave | Impacto |
@@ -176,13 +183,13 @@ cpp_link_args = ['-static-libstdc++', '-Wl,-z,max-page-size=16384']
 
 ## 5. Guía de Instalación y Configuración Óptima en Emuladores
 
-El paquete oficial [`Custom_RADV_Xclipse540.zip`](https://github.com/sepuro/radv-xclipse/releases/tag/v3.0.0-GOLD-MASTER) cumple con la estructura estándar de **AdrenoTools** (`meta.json` + `vulkan.radeon.so` + `NOTICE.txt`), permitiendo su carga directa sin alterar las particiones del sistema.
+El paquete oficial [`Custom_RADV_Xclipse540.zip`](https://github.com/sepuro/radv-xclipse/releases/tag/v3.0.1-HOTFIX-STABLE) cumple con la estructura estándar de **AdrenoTools** (`meta.json` + `vulkan.radeon.so` + `NOTICE.txt`), permitiendo su carga directa sin alterar las particiones del sistema.
 
 ### Instalación en Winlator (Juegos de PC x86/x64)
 1. Abre **Winlator** y ve a **Settings** > **Driver Manager**.
 2. Pulsa en el icono `+` (Install) y selecciona `Custom_RADV_Xclipse540.zip`.
 3. En la configuración de tu Contenedor:
-   - **Graphics Driver**: Selecciona `Custom RADV Xclipse 540 (v3.0.0-GOLD-MASTER)`.
+   - **Graphics Driver**: Selecciona `Custom RADV Xclipse 540 (v3.0.1-HOTFIX-STABLE)`.
    - **DXVK Version**: Selecciona `DXVK 2.3.1` o `DXVK 2.4` (Async).
 4. **Variables de Entorno Recomendadas para DXVK / VKD3D**:
    ```ini
