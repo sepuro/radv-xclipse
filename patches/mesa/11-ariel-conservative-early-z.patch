@@ -1,0 +1,23 @@
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index f37fddb..c8693e0 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -2181,9 +2181,17 @@ radv_precompute_registers_hw_fs(struct radv_device *device, struct radv_shader *
+    else if (info->ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
+       conservative_z_export = V_02880C_EXPORT_LESS_THAN_Z;
+ 
+-   const unsigned z_order =
++   unsigned z_order =
+       info->ps.early_fragment_test || !info->ps.writes_memory ? V_02880C_EARLY_Z_THEN_LATE_Z : V_02880C_LATE_Z;
+ 
++   /* On CHIP_ARIEL (Xclipse 540 / Exynos 1580), prioritize EARLY_Z_THEN_LATE_Z when
++    * fragment shader uses discard (can_discard) without writing memory or gl_FragDepth (!writes_z).
++    * This culls occluded geometry prior to fragment execution to avoid overdraw bottlenecks on 2 WGPs. */
++   if ((pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) &&
++       info->ps.can_discard && !info->ps.writes_memory && !info->ps.writes_z) {
++      z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
++   }
++
+    /* It shouldn't be needed to export gl_SampleMask when MSAA is disabled, but this appears to break Project Cars
+     * (DXVK). See https://bugs.freedesktop.org/show_bug.cgi?id=109401
+     */

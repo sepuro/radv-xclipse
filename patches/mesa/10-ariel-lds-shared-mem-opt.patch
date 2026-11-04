@@ -1,0 +1,42 @@
+diff --git a/src/amd/vulkan/radv_physical_device.c b/src/amd/vulkan/radv_physical_device.c
+index 163ed56..38b6640 100644
+--- a/src/amd/vulkan/radv_physical_device.c
++++ b/src/amd/vulkan/radv_physical_device.c
+@@ -3314,6 +3314,12 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
+       pdev->vk.supported_features.extendedDynamicState3SampleLocationsEnable = true;
+       pdev->vk.supported_features.extendedDynamicState3LineRasterizationMode = true;
+       pdev->vk.supported_features.extendedDynamicState3AlphaToOneEnable = true;
++
++      /* 5. Enable workgroup memory explicit layouts to allow 64-bit/128-bit LDS vectorization */
++      pdev->vk.supported_features.workgroupMemoryExplicitLayout = true;
++      pdev->vk.supported_features.workgroupMemoryExplicitLayoutScalarBlockLayout = true;
++      pdev->vk.supported_features.workgroupMemoryExplicitLayout8BitAccess = true;
++      pdev->vk.supported_features.workgroupMemoryExplicitLayout16BitAccess = true;
+    }
+ 
+    struct stat primary_stat = {0}, render_stat = {0};
+diff --git a/src/amd/vulkan/radv_shader.c b/src/amd/vulkan/radv_shader.c
+index 897b0f7..f37fddb 100644
+--- a/src/amd/vulkan/radv_shader.c
++++ b/src/amd/vulkan/radv_shader.c
+@@ -974,6 +974,20 @@ radv_shader_spirv_to_nir(const struct radv_compiler_info *compiler_info, struct
+       NIR_PASS(_, nir, nir_lower_vars_to_explicit_types, var_modes, shared_var_info);
+       NIR_PASS(_, nir, nir_lower_explicit_io, var_modes, nir_address_format_32bit_offset);
+ 
++      if (compiler_info->key.family == CHIP_ARIEL && nir->info.stage == MESA_SHADER_COMPUTE) {
++         /* Vectorize 64-bit / 128-bit LDS shared memory accesses into ds_read_b64 / ds_write_b64
++          * to minimize LDS bank conflicts across the 2 WGPs of Xclipse 540. */
++         nir_load_store_vectorize_options lds_vectorize_opts = {
++            .modes = nir_var_mem_shared,
++            .callback = ac_nir_mem_vectorize_callback,
++            .cb_data = &(struct ac_nir_config){compiler_info->ac->gfx_level, !compiler_info->key.use_llvm},
++            .robust_modes = 0,
++            .bounds_checked_modes = nir_var_mem_shared,
++            .has_shared2_amd = true,
++         };
++         NIR_PASS(_, nir, nir_opt_load_store_vectorize, &lds_vectorize_opts);
++      }
++
+       if (nir->info.zero_initialize_shared_memory && nir->info.shared_size > 0) {
+          const unsigned chunk_size = 16; /* max single store size */
+          const unsigned shared_size = align(nir->info.shared_size, chunk_size);
