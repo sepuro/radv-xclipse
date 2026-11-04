@@ -145,7 +145,7 @@ Esta capa aplica el hotfix **v3.0.1-HOTFIX-STABLE**, revirtiendo modificaciones 
 
 | Parche | Archivo | Subsistema | Modificación Técnica Clave | Impacto en Rendimiento / Estabilidad |
 |---|---|---|---|---|
-| **24** | `24-ariel-safe-low-latency-cmd.patch` | Command Buffer / Physical Device | Limpieza e inicialización incondicional de estado y coherencia (`RADV_CMD_DIRTY_PIPELINE`, `RADV_CMD_DIRTY_FRAMEBUFFER`, `RADV_DYNAMIC_ALL`, `rb_noncoherent_dirty = true`) al inicio de cada Command Buffer en `radv_BeginCommandBuffer`, y reporte de versión `v3.0.1-HOTFIX-STABLE` en `driverInfo` / `driverName` sin alterar estructuras de features ni extensiones. | Garantiza arranque instantáneo e inmaculado de juegos y emuladores (Winlator, Eden, Citron, Mobox) eliminando fallos en la primera llamada de dibujo (*draw call*). |
+| **24** | `24-ariel-safe-low-latency-cmd.patch` | Command Buffer / Physical Device | Limpieza e inicialización incondicional de estado y coherencia (`RADV_CMD_DIRTY_GRAPHICS_PIPELINE`, `RADV_CMD_DIRTY_CB_RENDER_STATE`, `RADV_DYNAMIC_ALL`, `rb_noncoherent_dirty = true`) al inicio de cada Command Buffer en `radv_BeginCommandBuffer`, y reporte de versión `v3.0.1-HOTFIX-STABLE` en `driverInfo` / `driverName` sin alterar estructuras de features ni extensiones. | Garantiza arranque instantáneo e inmaculado de juegos y emuladores (Winlator, Eden, Citron, Mobox) eliminando fallos en la primera llamada de dibujo (*draw call*). |
 
 ### Parches de Kernel (`patches/libdrm/`)
 

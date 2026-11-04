@@ -9,7 +9,7 @@ index b01327c..e06f4aa 100644
 +   /* On CHIP_ARIEL / Xclipse 540: guarantee clean command buffer startup across all graphics
 +    * engines by ensuring state and cache initializations are not omitted. */
 +   if (pdev->info.family == CHIP_ARIEL || pdev->info.xclipse_model == AC_XCLIPSE_540) {
-+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_FRAMEBUFFER;
++      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_GRAPHICS_PIPELINE | RADV_CMD_DIRTY_CB_RENDER_STATE;
 +      cmd_buffer->state.dirty_dynamic |= RADV_DYNAMIC_ALL;
 +      cmd_buffer->state.rb_noncoherent_dirty = true;
 +   }
