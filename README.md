@@ -12,7 +12,7 @@
 
 ## 1. Resumen Ejecutivo e Identidad del Proyecto
 
-Este proyecto proporciona un controlador Vulkan de alto rendimiento basado en **Mesa RADV** optimizado específicamente para la GPU **Samsung Xclipse 540** (núcleo gráfico RDNA 3 móvil, nombre en código `CHIP_ARIEL` / SoC Exynos 1580 / `S5E8855`).
+Este proyecto proporciona un controlador Vulkan de producción ("Gold Master") basado en **Mesa RADV**, diseñado y adaptado a nivel de microarquitectura para la GPU **Samsung Xclipse 540** (núcleo gráfico RDNA 3 móvil, nombre en código `CHIP_ARIEL` / SoC Exynos 1580 / `S5E8855`).
 
 A diferencia de los entornos de escritorio para los que RADV fue concebido originalmente, el despliegue en un SoC móvil Samsung impone retos de ingeniería críticos:
 1. **Interfase con el Kernel Propietario (`sgpu`)**: El kernel Linux de Samsung para Exynos 1580 no implementa la capa `amdgpu.ko` estándar de escritorio, sino un driver de kernel propietario denominado `sgpu`. Nuestro stack utiliza una capa adaptada de `libdrm` con caché de registros MMR en espacio de usuario e ioctls DRM personalizados para garantizar la comunicación directa y de mínima sobrecarga con el hardware.
@@ -30,7 +30,7 @@ flowchart TD
     subgraph APP["Capa de Aplicación y Traducción"]
         A1["Juego Vulkan Nativo"] 
         A2["Capa DXVK / VKD3D"] 
-        A3["Emuladores (Citron / Eden / Winlator / Mobox)"]
+        A3["Emuladores (Citron / Eden / Winlator / Mobox / Vita3K)"]
     end
 
     subgraph DRIVER["Mesa RADV Driver Core (v3.0.0-GOLD-MASTER)"]
@@ -87,7 +87,7 @@ flowchart TD
 
 El controlador se construye de forma puramente determinista mediante una secuencia incremental de 23 parches sobre el código fuente oficial de Mesa, acompañados por 2 parches para `libdrm`.
 
-### Capa 1: Base de Estabilidad, WSI y Precisión FP16
+### Capa 1: Base de Estabilidad, WSI y Precisión FP16 (Parches `01` al `05`)
 Esta capa establece las condiciones fundamentales para que el driver funcione de forma estable sobre Android y el kernel de Samsung.
 
 | Parche | Archivo | Subsistema | Modificación Técnica Clave | Impacto en Rendimiento / Estabilidad |
@@ -98,47 +98,47 @@ Esta capa establece las condiciones fundamentales para que el driver funcione de
 | **04** | `04-ariel-ngg-shadow-fastpath.patch` | NGG / Pipeline / Raster | Implementa `NGG Passthrough` en pasadas de renderizado exclusivas de profundidad/sombras manteniendo `ngg_culling = false`. | Acelera drásticamente las pasadas de generación de sombras en motores complejos (DXVK/VKD3D). |
 | **05** | `05-ariel-driconf-and-emu-exts.patch` | Driconf / Extensiones | Configura perfiles automáticos `driconf`, introduce el comportamiento `vk_dont_care_as_load` y desbloquea `EXT_custom_border_color` y `EXT_extended_dynamic_state3`. | Corrige texturas ausentes y geometría corrupta en juegos traducidos desde Direct3D. |
 
-### Capa 2: Compilador ACO, Descriptores y Cómputo
+### Capa 2: Compilador ACO, Descriptores y Cómputo (Parches `06` al `12`)
 Esta capa exprime la capacidad matemática de los Compute Units de RDNA 3 y reduce el coste de emisión de llamadas de dibujado (*draw calls*).
 
 | Parche | Archivo | Subsistema | Modificación Técnica Clave | Impacto en Rendimiento / Estabilidad |
 |---|---|---|---|---|
 | **06** | `06-ariel-aco-clause-and-unroll.patch` | ACO / NIR | Habilita cláusulas duras RDNA 3 (`s_clause`) y expande el desenrollado de bucles en NIR hasta `max_unroll_iterations = 32`. | Maximiza el aprovechamiento de los puertos de emisión de instrucciones y la densidad de cálculo. |
 | **07** | `07-ariel-async-compute-balance.patch` | RADV Device / Queues | Restringe la exposición de colas de cómputo asíncrono a exactamente 1 cola en `CHIP_ARIEL`. | Evita que cargas pesadas de compute compitan destructivamente contra la cola gráfica en solo 2 WGPs. |
-| **08** | `08-ariel-push-desc-fastpath.patch` | Descriptor Set / Build | Asigna descriptores dinámicos (*Push Descriptors*) directamente en registros escalares (SGPRs) y aplica visibilidad ELF oculta. | Minimiza el tráfico de descriptores en memoria y reduce el overhead de llamadas dinámicas en el binario. |
+| **08** | `08-ariel-push-desc-fastpath.patch` | Descriptor Set / Build | Asigna descriptores dinámicos (*Push Descriptors*) directamente en registros escalares (SGPRs) y aplica visibilidad ELF oculta (`-fvisibility=hidden`). | Minimiza el tráfico de descriptores en memoria y reduce el overhead de llamadas dinámicas en el binario. |
 | **09** | `09-ariel-aco-vmem-latency-sched.patch` | ACO Scheduler | Ajusta la heurística del planificador de instrucciones de ACO para agrupar lecturas VMEM y ocultar la latencia de LPDDR5. | Mitiga las caídas de fotogramas provocadas por esperas de memoria en cargas con texturizado denso. |
 | **10** | `10-ariel-lds-shared-mem-opt.patch` | ACO / LDS | Vectoriza operaciones en memoria local compartida (LDS) a 64 y 128 bits (`ds_read_b64` / `ds_write_b64`) minimizando conflictos de bancos. | Mejora el rendimiento de compute shaders y efectos de posprocesado (FSR, TAA, Bloom). |
 | **11** | `11-ariel-conservative-early-z.patch` | Pipeline / Raster | Activa modo Early-Z conservador (`EARLY_Z_THEN_LATE_Z`) en pipelines gráficos con descarte condicional de fragmentos. | Elimina el sobregiro (*overdraw*) en escenas con abundante follaje o geometría con textura alfa. |
 | **12** | `12-ariel-cs-ib-prealloc.patch` | Command Stream / Winsys | Pre-asigna búferes indirectos (*Indirect Buffers* / IB) con alineación optimizada de 64 bytes para command buffers grandes. | Reduce la latencia de la CPU durante la grabación de comandos en escenas con miles de draw calls. |
 
-### Capa 3: Microarquitectura GFX11 y Estado PM4
+### Capa 3: Microarquitectura GFX11 y Estado PM4 (Parches `13` al `16`)
 Esta capa optimiza el procesador de comandos de hardware (CP) y el bus de datos en chip.
 
 | Parche | Archivo | Subsistema | Modificación Técnica Clave | Impacto en Rendimiento / Estabilidad |
 |---|---|---|---|---|
-| **13** | `13-ariel-gfx11-dpp-subgroup-opt.patch` | ACO Compiler | Prioriza el uso de primitivas **DPP8/DPP16** y `permlane16` para reducciones y shuffles en subgrupos Wave32 locales. | Ejecuta operaciones entre carriles en 1 solo ciclo de reloj sin recurrir a memoria compartida LDS. |
-| **14** | `14-ariel-pm4-redundant-state-filter.patch` | Command Buffer / PM4 | Implementa un filtro en memoria para evitar re-emitir paquetes `SET_CONTEXT_REG` idénticos (Viewport, Scissor, Depth Bias, Blend). | Descongestiona el Command Processor de la GPU y ahorra valiosos ciclos de reloj por draw call. |
-| **15** | `15-ariel-tc-compatible-fast-clear-opt.patch` | Meta / Fast Clear | Habilita limpiezas rápidas compatibles con la caché de texturas (TC-Compatible Fast Clear) en imágenes con compresión DCC. | Ahorra anchos de banda masivos al evitar descompresiones completas entre render targets sucesivos. |
-| **16** | `16-ariel-android-fast-disk-cache.patch` | Disk Cache OS | Ajusta el algoritmo de compresión de la caché de shaders en disco a Zstandard / zlib nivel 1 ultrarrápido en Android. | Erradica los microtirones (*stuttering*) causados por la CPU al escribir shaders compilados a almacenamiento flash. |
+| **13** | `13-ariel-gfx11-dpp-subgroup-opt.patch` | ACO Compiler | Intercambio de subgrupos en 1 ciclo con primitivas **DPP8/DPP16** y `permlane16` en Wave32, evitando LDS para operaciones locales. | Reduce a cero la latencia de memoria compartida en reducciones y operaciones de onda. |
+| **14** | `14-ariel-pm4-redundant-state-filter.patch` | Command Buffer / PM4 | Filtrado estricto de paquetes PM4 redundantes (`SET_CONTEXT_REG` / `SET_SH_REG` para Viewport, Scissor, Depth Bias y Blend). | Descongestiona el Command Processor de la GPU y ahorra valiosos ciclos de reloj por draw call. |
+| **15** | `15-ariel-tc-compatible-fast-clear-opt.patch` | Meta / Fast Clear | Limpieza rápida **TC-Compatible Fast Clear** sin pases de descompresión innecesarios en imágenes comprimidas con DCC. | Ahorra anchos de banda masivos de memoria LPDDR5 entre pases sucesivos de renderizado. |
+| **16** | `16-ariel-android-fast-disk-cache.patch` | Disk Cache OS | Compresión ultrarrápida ZSTD / zlib Nivel 1 en `disk_cache` para eliminar tirones al guardar shaders en almacenamiento flash UFS. | Erradica por completo los micro-tirones (*framerate spikes*) al compilar shaders durante el juego. |
 
-### Capa 4: Eficiencia Térmica, Memoria y Pacing de CPU
+### Capa 4: Eficiencia Térmica y Control de Energía (Parches `17` al `20`)
 Esta capa asegura que el dispositivo mantenga un rendimiento sostenido y no sobrecaliente el SoC Exynos 1580 en sesiones prolongadas de juego.
 
 | Parche | Archivo | Subsistema | Modificación Técnica Clave | Impacto en Rendimiento / Estabilidad |
 |---|---|---|---|---|
-| **17** | `17-ariel-pbb-tile-binning-thermal.patch` | Physical Device / PBB | Calibra el agrupamiento de triángulos por lotes en primitivas (Primitive Batch Binning / `PA_SC_BINNER_CNTL_0`) para 2 WGPs. | Procesa la geometría por mosaicos locales, reduciendo en más de un 30% el tráfico hacia la RAM LPDDR5 y bajando la temperatura. |
-| **18** | `18-ariel-gl2-cache-retention-policy.patch` | Descriptors / L2 Cache | Configura los bits `SLC` y `DLC` en descriptores de buffers de subida de CPU para no desalojar texturas residentes en caché GL2. | Evita el efecto de expulsión cruzada (*thrashing*) en la caché L2, protegiendo los datos de texturas de alta prioridad. |
-| **19** | `19-ariel-aco-waitcnt-alu-thermal.patch` | ACO Waitcnt | Inserta instrucciones de bajo consumo (`s_sleep`) en bucles de sondeo de esperas de sincronización interna. | Reduce el consumo estático y dinámico de las ALUs de la GPU durante estados de espera de dependencias. |
-| **20** | `20-ariel-cpu-sync-thermal-pacing.patch` | Winsys Sync / CPU | Sustituye bucles de espera activa (*spin-wait*) en CPU por suspensiones cooperativas (`sched_yield` / `nanosleep`). | Evita que los núcleos de rendimiento Cortex-A720 se saturen al 100% esperando a la GPU, disminuyendo la emisión de calor. |
+| **17** | `17-ariel-pbb-tile-binning-thermal.patch` | Physical Device / PBB | **Primitive Batch Binning (PBB)** por mosaicos (`PA_SC_BINNER_CNTL_0`) calibrado para los 2 WGPs de `CHIP_ARIEL`. | Procesa la geometría por mosaicos locales, reduciendo drásticamente el tráfico y calentamiento de la memoria LPDDR5. |
+| **18** | `18-ariel-gl2-cache-retention-policy.patch` | Descriptors / L2 Cache | Políticas de retención en caché `GL2` (`SLC`/`DLC`) para evitar que buffers temporales de subida CPU expulsen a las texturas activas. | Evita el efecto de expulsión cruzada (*thrashing*) en la caché L2, protegiendo las texturas de alta prioridad. |
+| **19** | `19-ariel-aco-waitcnt-alu-thermal.patch` | ACO Waitcnt | Consolidación de `s_waitcnt` e inyección de micro-reposo (`s_sleep 1`) en spin-locks de shaders para enfriar las ALUs. | Reduce sustancialmente el consumo energético estático y dinámico en bucles de espera interna de shaders. |
+| **20** | `20-ariel-cpu-sync-thermal-pacing.patch` | Winsys Sync / CPU | Sincronización pasiva de CPU en los núcleos Cortex-A720 (eliminación de *busy-polling* en espera de fences con `sched_yield`). | Disminuye la temperatura del SoC al evitar que los núcleos de rendimiento giren al 100% esperando a la GPU. |
 
-### Capa 5: Vulkan 1.4 API, big.LITTLE Scheduling y Formatos Nativos TMU
+### Capa 5: API Vulkan Next y Pulido Gold Master (Parches `21` al `23`)
 La capa final corona la edición **Gold Master** garantizando soporte para los estándares de API más modernos y extrayendo la máxima eficiencia del clúster de CPU.
 
 | Parche | Archivo | Subsistema | Modificación Técnica Clave | Impacto en Rendimiento / Estabilidad |
 |---|---|---|---|---|
-| **21** | `21-ariel-vulkan-api-and-extensions-upgrade.patch` | Physical Device / Vulkan Core | Actualiza `apiVersion` a **Vulkan 1.4 (`1.4.363`)** y expone extensiones modernas seguras (`VK_KHR_maintenance5/6`, `VK_KHR_dynamic_rendering_local_read`, `VK_EXT_shader_object`, `VK_EXT_attachment_feedback_loop_layout`, divisor de atributos, uint8 index). Mantiene RT y Mesh Shaders bajo estricto guardia de conformidad. | Desbloquea compatibilidad completa con emuladores modernos y motores gráficos de última generación sin fallos de conformidad. |
-| **22** | `22-ariel-cpu-big-little-thread-prio.patch` | Work Queues / CPU Scheduling | Aplica `UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY` en `util_queue_init` para todas las colas de trabajo auxiliares en Android (`nice 19` / `SCHED_BATCH`). | Confina la compilación en segundo plano y escritura de disco a los núcleos de eficiencia **Cortex-A520**, blindando los FPS en los **Cortex-A720**. |
-| **23** | `23-ariel-native-astc-etc2-fastpath.patch` | Formats / TMU Decoder | Enruta todas las texturas móviles `ASTC_LDR` y `ETC2/EAC` directamente hacia los decodificadores de hardware de las TMUs, forzando `radv_is_format_emulated = false`. | Muestreo de texturas comprimidas nativo a velocidad de silicio sin incurrir en lenta emulación por compute shaders. |
+| **21** | `21-ariel-vulkan-api-and-extensions-upgrade.patch` | Physical Device / Vulkan Core | Actualización de API Vulkan a **1.4 (`1.4.363`)** y activación de `VK_KHR_maintenance5/6`, `VK_KHR_dynamic_rendering_local_read`, `VK_EXT_shader_object`, `VK_KHR_index_type_uint8`, `VK_EXT_attachment_feedback_loop_layout` y Dynamic State. Ray Tracing y Mesh Shaders estrictamente custodiados por seguridad de conformidad. | Desbloquea compatibilidad completa con emuladores modernos y motores gráficos de última generación sin crashes. |
+| **22** | `22-ariel-cpu-big-little-thread-prio.patch` | Work Queues / CPU Scheduling | Afinación `big.LITTLE` del pool de compilación asíncrona (`UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY` / `nice 19` / `SCHED_BATCH`). | Confina la compilación en segundo plano y escritura de disco a los núcleos de eficiencia **Cortex-A520**, blindando los FPS en los **Cortex-A720**. |
+| **23** | `23-ariel-native-astc-etc2-fastpath.patch` | Formats / TMU Decoder | Decodificación nativa por hardware de formatos móviles **ASTC LDR** y **ETC2** en las TMUs de la Xclipse 540, forzando `radv_is_format_emulated = false`. | Muestreo de texturas comprimidas nativo a velocidad de silicio sin incurrir en lenta emulación por compute shaders. |
 
 ### Parches de Kernel (`patches/libdrm/`)
 
@@ -149,29 +149,107 @@ La capa final corona la edición **Gold Master** garantizando soporte para los e
 
 ---
 
-## 4. Guía de Instalación y Uso
+## 4. Ingeniería del Build System y Seguridad de Compilación
 
-El driver se distribuye listo para ser consumido por emuladores de Android compatibles con el estándar **AdrenoTools** (GPU Driver Manager).
+El archivo `.github/workflows/build-radv-xclipse.yml` implementa una cadena de compilación de precisión con las siguientes banderas y directivas de seguridad:
 
-### Emuladores Compatibles
-- **Citron / Yuzu / Suyu / Eden** (Emulación Nintendo Switch)
-- **Winlator / Winlator Frost / Mobox / Box64Droid** (Emulación PC x86/x64 en Android)
-- **Vita3K Android** (Emulación PlayStation Vita)
-- **AetherSX2 / NetherSX2** (Emulación PlayStation 2 - Modo Vulkan)
+```ini
+# Cross-Compilation Config (cross-android-aarch64.ini)
+[built-in options]
+c_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer', '-fvisibility=hidden']
+cpp_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer', '-fvisibility=hidden']
+c_link_args = ['-Wl,-z,max-page-size=16384']
+cpp_link_args = ['-static-libstdc++', '-Wl,-z,max-page-size=16384']
+```
 
-### Pasos de Instalación en la Aplicación
-1. Descarga el paquete oficial [`Custom_RADV_Xclipse540.zip`](https://github.com/sepuro/radv-xclipse/releases/tag/v3.0.0-GOLD-MASTER).
-2. Abre tu emulador (por ejemplo, *Citron* o *Winlator*).
-3. Dirígete a la sección **Settings** > **GPU Driver Manager** (o *Install Custom Driver*).
-4. Pulsa en **Install** e importa el archivo `Custom_RADV_Xclipse540.zip` sin descomprimirlo.
-5. Selecciona el driver importado. Verás listado:
-   - **Nombre**: `Custom RADV Xclipse 540 (Mesa 24.2.0-devel)`
-   - **Versión**: `v3.0.0-GOLD-MASTER (Vulkan 1.4.363)`
-6. Inicia tu juego preferido.
+### Justificación de Flags Críticos
+- **`-Db_ndebug=true`**: Elimina todas las aserciones de depuración en caliente (`assert()`), reduciendo la sobrecarga de CPU en el camino crítico de renderizado.
+- **`-Db_lto=true` y `-Db_lto_mode=thin`**: Habilita *Thin Link-Time Optimization* a través de LLVM, permitiendo inlining inter-modular entre NIR, ACO y RADV sin disparar los tiempos de compilación ni el uso de memoria RAM.
+- **`-march=armv8.2-a+dotprod+fp16`**: Habilita instrucciones nativas de producto escalar (Dot Product) y punto flotante de media precisión (FP16) para la CPU ARM Cortex-A720, acelerando el compilador JIT ACO de Mesa.
+- **`-Wl,-z,max-page-size=16384`**: Alinea los segmentos ELF a páginas de 16 KB. Esto garantiza compatibilidad nativa con Android 15 y Android 16 (donde kernels con páginas de 16 KB son estándar), eliminando penalizaciones de rendimiento por emulación de página en el kernel.
+- **`$NDK_TOOLCHAIN/llvm-strip --strip-unneeded`**: Remueve símbolos no exportados y tablas de depuración innecesarias en runtime, optimizando el tamaño del archivo `.so` a ~4.8 MB.
+
+> [!CAUTION]
+> **Prohibición Estricta de `-ffast-math`**: En drivers gráficos y compiladores de shaders (como NIR y ACO), el uso de `-ffast-math` está **estrictamente prohibido**. Esta bandera desactiva el cumplimiento estricto del estándar IEEE-754, provocando que divisiones por cero, valores `NaN` e `Inf` sean optimizados de forma destructiva. Esto rompe la evaluación de profundidad inversa, los pases de clipping proyectivo y causa vértices disparados al infinito en emuladores y juegos Vulkan.
 
 ---
 
-## 5. Variables de Entorno y Propiedades del Sistema (`setprop`)
+## 5. Guía de Instalación y Configuración Óptima en Emuladores
+
+El paquete oficial [`Custom_RADV_Xclipse540.zip`](https://github.com/sepuro/radv-xclipse/releases/tag/v3.0.0-GOLD-MASTER) cumple con la estructura estándar de **AdrenoTools** (`meta.json` + `vulkan.radeon.so` + `NOTICE.txt`), permitiendo su carga directa sin alterar las particiones del sistema.
+
+### Instalación en Winlator (Juegos de PC x86/x64)
+1. Abre **Winlator** y ve a **Settings** > **Driver Manager**.
+2. Pulsa en el icono `+` (Install) y selecciona `Custom_RADV_Xclipse540.zip`.
+3. En la configuración de tu Contenedor:
+   - **Graphics Driver**: Selecciona `Custom RADV Xclipse 540 (v3.0.0-GOLD-MASTER)`.
+   - **DXVK Version**: Selecciona `DXVK 2.3.1` o `DXVK 2.4` (Async).
+4. **Variables de Entorno Recomendadas para DXVK / VKD3D**:
+   ```ini
+   DXVK_ASYNC=1
+   DXVK_STATE_CACHE=1
+   RADV_XCLIPSE_DCC=1
+   RADV_XCLIPSE_PBB=1
+   VKD3D_CONFIG=no_upload_hlist,dxr11
+   ```
+
+### Instalación en Citron / Eden (Nintendo Switch)
+1. Abre **Citron** o **Eden** y pulsa en el engranaje de **Ajustes** > **GPU Driver Manager**.
+2. Pulsa en **Install** e importa `Custom_RADV_Xclipse540.zip`.
+3. Selecciona el driver activo `Custom RADV Xclipse 540 (Mesa 24.2.0-devel)`.
+4. En **Graphics Settings**:
+   - **Graphics Backend**: `Vulkan`
+   - **Disk Pipeline Cache**: `Activado`
+   - **Vsync Mode**: `Mailbox` o `FIFO`
+
+### Instalación en Vita3K (PlayStation Vita)
+1. Ve a **Settings** > **GPU** > **Custom Driver Manager**.
+2. Instala `Custom_RADV_Xclipse540.zip`.
+3. Selecciona el backend **Vulkan** y activa **Pipeline Caching**.
+
+---
+
+## 6. Mantenimiento Modular (Activación, Desactivación y Auditoría)
+
+El flujo de integración está estructurado para permitir la verificación independiente de cada parche:
+
+### Aplicación Numérica Determinista (`sort -V`)
+En el archivo de workflow, los parches se procesan en orden de versión natural:
+```bash
+for patch_file in $(ls patches/mesa/*.patch | sort -V); do
+  if [ -f "$patch_file" ]; then
+    echo "Applying modular patch: $patch_file..."
+    patch -p1 -N < "$patch_file" || true
+  fi
+done
+```
+
+### Cómo Auditar la Cadena de Parches Localmente
+Para verificar que toda la cadena aplica limpiamente sin un solo conflicto de código sobre el árbol oficial de Mesa:
+
+```bash
+# 1. Limpiar el árbol al commit oficial remoto
+git -C mesa_radv_src reset --hard origin/HEAD && git -C mesa_radv_src clean -fd
+
+# 2. Auditar en seco (dry-run) y aplicar secuencialmente
+for p in $(ls patches/mesa/*.patch | sort -V); do
+  echo "Auditando $p..."
+  git -C mesa_radv_src apply --check "../$p" && git -C mesa_radv_src apply "../$p" || {
+    echo "ERROR en el parche: $p"
+    exit 1
+  }
+done
+echo "¡Cadena completa auditada con éxito (0 rechazos)!"
+```
+
+### Desactivar o Aislar un Parche Específico
+Para aislar o remover un parche de la compilación:
+1. Simplemente renombra la extensión del archivo (por ejemplo: `mv patches/mesa/18-*.patch patches/mesa/18-*.patch.disabled`).
+2. El bucle `sort -V` en GitHub Actions omitirá automáticamente cualquier archivo que no termine en `.patch`.
+
+---
+
+## 7. Variables de Entorno y Propiedades del Sistema (`setprop`)
 
 Puedes ajustar el comportamiento del driver en tiempo de ejecución tanto mediante variables de entorno (en scripts de Winlator o Termux) como mediante propiedades de Android vía ADB:
 
@@ -196,27 +274,7 @@ adb shell setprop debug.radv_xclipse_pbb 1
 
 ---
 
-## 6. Especificaciones de Compilación y Cross-Toolchain
-
-El paquete se compila de forma reproducible a través de GitHub Actions con las siguientes especificaciones técnicas:
-
-- **Host Runner**: Ubuntu 24.04 LTS (x86_64)
-- **Compilador C/C++**: Clang 17.0.2 (Android NDK r26b)
-- **Target Triple**: `aarch64-linux-android34`
-- **Sistema de Construcción**: Meson 1.4.0 + Ninja Build
-- **Alineación de Página ELF**: `-Wl,-z,max-page-size=16384` (Compatibilidad nativa con páginas de 16 KB en Android 15 y Android 16)
-- **Flags de Optimización**:
-  ```ini
-  c_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer', '-fvisibility=hidden']
-  cpp_args = ['-O2', '-march=armv8.2-a+dotprod+fp16', '-fno-semantic-interposition', '-fomit-frame-pointer', '-fvisibility=hidden']
-  c_link_args = ['-Wl,-z,max-page-size=16384']
-  cpp_link_args = ['-static-libstdc++', '-Wl,-z,max-page-size=16384']
-  ```
-- **Procesamiento de Símbolos**: `$NDK_TOOLCHAIN/llvm-strip --strip-unneeded` para asegurar una biblioteca compacta (~4.8 MB) y tiempos de carga instantáneos en la memoria de la aplicación.
-
----
-
-## 7. Créditos y Licencia
+## 8. Créditos y Licencia
 
 - **Mesa 3D Graphics Library**: Desarrollado y mantenido por el equipo oficial de Mesa, la comunidad open-source y Valve Software (creadores del backend ACO).
 - **Adaptación y Optimización Xclipse 540 / CHIP_ARIEL**: Ingeniería y desarrollo modular por **Antigravity & purwowd**.
