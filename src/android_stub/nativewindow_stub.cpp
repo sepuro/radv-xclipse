@@ -1,6 +1,7 @@
 #include <vndk/window.h>
 #include <vndk/hardware_buffer.h>
 
+#pragma GCC visibility push(default)
 extern "C" {
 
 AHardwareBuffer *
@@ -109,3 +110,4 @@ ANativeWindow_setSharedBufferMode(ANativeWindow *window,
    return 0;
 }
 }
+#pragma GCC visibility pop

@@ -1,5 +1,6 @@
 #include <sync/sync.h>
 
+#pragma GCC visibility push(default)
 extern "C" {
 
 /* timeout in msecs */
@@ -23,3 +24,4 @@ void sync_file_info_free(struct sync_file_info* info)
 }
 
 }
+#pragma GCC visibility pop
