@@ -1,17 +1,3 @@
-diff --git a/src/amd/common/ac_gpu_info.c b/src/amd/common/ac_gpu_info.c
-index 5bdb933..60b3428 100644
---- a/src/amd/common/ac_gpu_info.c
-+++ b/src/amd/common/ac_gpu_info.c
-@@ -223,7 +223,8 @@ static const struct ac_xclipse_chip ac_xclipse_chips[AC_XCLIPSE_MODEL_COUNT] = {
-    [AC_XCLIPSE_530]     = {"530",     "TITAN",         true,  false, true,   false, false, false,
-                            {0, 4, 32, 0x06ff0154, 0x03e00000, false}},
-    [AC_XCLIPSE_940]     = {"940",     "MAGELLAN CARL", true,  true,  true,   true,  false, false},
--   [AC_XCLIPSE_540]     = {"540",     "ARIEL",         true,  false, true,   true,  false, false},
-+   [AC_XCLIPSE_540]     = {"540",     "ARIEL",         true,  false, true,   true,  false, false,
-+                           {0, 4, 32, 0x06ff0154, 0x03e00000, true}},
-    /* The 950's early vsprobe timeouts and the 960's draw timeouts were mid-IB preemption with
-     * register shadowing, now off on every Xclipse (see has_kernelq_reg_shadowing). The 950's BVH
-     * build hang predates that and is untested since. */
 diff --git a/src/amd/vulkan/radv_buffer_view.c b/src/amd/vulkan/radv_buffer_view.c
 index ee42349..fc33b13 100644
 --- a/src/amd/vulkan/radv_buffer_view.c

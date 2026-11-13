@@ -198,3 +198,31 @@ El paquete de distribución [`Custom_RADV_Xclipse540.zip`](https://github.com/se
 ### Vita3K (PlayStation Vita)
 1. Ve a **Settings** > **GPU** > **Custom Driver Manager** e instala el paquete.
 2. Selecciona backend **Vulkan** con **Pipeline Caching** activo.
+
+---
+
+## 9. Optimizaciones Multi-GPU Xclipse, Switches en Runtime y CI/CD
+
+### 9.1 Defaults Seguros por Familia (`ac_gpu_info.c` / `radv_physical_device.c`)
+- **Primitive Batch Binning (`RADV_XCLIPSE_PBB` / `debug.radv_xclipse_pbb`)**: Activado por defecto (`on = true`) en Xclipse **920**, **530** y **540** (además del binning estándar de RADV activo en **940**, **550**, **950** y **960**), reduciendo drásticamente el ancho de banda hacia DRAM externa y el calentamiento del SoC. Se puede restaurar el binning upstream con `RADV_XCLIPSE_PBB=0` o `setprop debug.radv_xclipse_pbb 0`.
+- **Protección Anti-Hang de Ray Tracing (`RADV_XCLIPSE_RT` / `debug.radv_xclipse_rt`)**: Nuevo switch que controla la exposición de `VK_KHR_acceleration_structure`, `VK_KHR_ray_tracing_pipeline` y `VK_KHR_ray_query` (así como `has_image_bvh_intersect_ray` y `rt_ip_version`):
+  - **Xclipse 950 (`GALILEO`) y 960 (`JUNO`)**: Desactivado por defecto (`0`) para evitar bloqueos de GPU y reinicios del sistema en títulos DX12/RT. Solo se expone si un desarrollador fuerza `RADV_XCLIPSE_RT=1` o `setprop debug.radv_xclipse_rt 1`.
+  - **Xclipse 920 y 940**: Activado por defecto (`1`), desactivable manualmente con `0`.
+  - **Xclipse 530, 540 y 550**: Sin hardware BVH (`has_rt = false`), permanece siempre desactivado.
+- **Aliasing, DCC y CP DMA Prefetch**: Verificados activos por defecto `bc5_alias`, `bc7_alias`, `dcc` y `dcc_small` (`1`, desactivables con `0`), y `nopf` (`no_cp_dma_prefetch = true`) activo por defecto en **940, 540, 550, 950 y 960**.
+
+### 9.2 Optimización de Compilación y Enlace (`build.sh`, `build-wayland.sh`, `build.cmd`)
+- **Arquitectura ARM64 segura**: `-march=armv8.2-a+fp16+dotprod+crypto -mtune=cortex-a78 -O3 -fno-semantic-interposition -fdata-sections -ffunction-sections -fvisibility=hidden` (sin `-ffast-math` ni `-funsafe-math-optimizations`, preservando precisión IEEE-754 en ACO y RADV).
+- **ThinLTO + Dead Code Elimination (`lld`)**: `-Dbuildtype=release -Db_ndebug=true -Db_lto=true -Db_lto_mode=thin -Dallow-broken-lto=true` junto a `-fuse-ld=lld -Wl,--gc-sections -Wl,--icf=safe -Wl,-O3 -Wl,-z,max-page-size=16384`.
+- **Workflow CI/CD (`.github/workflows/build-release.yml`)**: Compila automáticamente en `ubuntu-24.04` con **Android NDK r29** cacheado ejecutando `./build.sh` y `./build-wayland.sh`, publicando los artefactos `radv-xclipse-android` y `radv-xclipse-wayland`.
+
+### 9.3 Perfiles en Tiempo de Ejecución (`scripts/xclipse-tuner.sh`)
+Permite ajustar propiedades `debug.radv_xclipse_*` desde `adb shell`, Termux o Shizuku sin recompilar:
+
+```sh
+./scripts/xclipse-tuner.sh --quality-max   # BC7->ASTC (39.1 dB), PBB=1, DCC=1, NOPF=1
+./scripts/xclipse-tuner.sh --cool-stable   # BC7->BC3 (menor pico de carga), PBB=1, DCC=1, NOPF=1, PACE=2 (920)
+./scripts/xclipse-tuner.sh --compat-fix    # Desactiva DCC en render targets <=512x512 (dcc_small=0)
+./scripts/xclipse-tuner.sh --status        # Muestra valores actuales
+./scripts/xclipse-tuner.sh --reset         # Restaura los defaults del driver
+```

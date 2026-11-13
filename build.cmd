@@ -39,8 +39,11 @@ if not exist "%BUILD%" mkdir "%BUILD%"
    echo ar = '%BIN%/llvm-ar.exe'
    echo strip = '%BIN%/llvm-strip.exe'
    echo.
-   echo [properties]
-   echo cpp_link_args = ['-static-libstdc++']
+   echo [built-in options]
+   echo c_args = ['-march=armv8.2-a+fp16+dotprod+crypto', '-mtune=cortex-a78', '-O3', '-fno-semantic-interposition', '-fdata-sections', '-ffunction-sections', '-fvisibility=hidden']
+   echo cpp_args = ['-march=armv8.2-a+fp16+dotprod+crypto', '-mtune=cortex-a78', '-O3', '-fno-semantic-interposition', '-fdata-sections', '-ffunction-sections', '-fvisibility=hidden']
+   echo c_link_args = ['-fuse-ld=lld', '-Wl,--gc-sections', '-Wl,--icf=safe', '-Wl,-O3', '-Wl,-z,max-page-size=16384']
+   echo cpp_link_args = ['-static-libstdc++', '-fuse-ld=lld', '-Wl,--gc-sections', '-Wl,--icf=safe', '-Wl,-O3', '-Wl,-z,max-page-size=16384']
    echo.
    echo [host_machine]
    echo system = 'android'
@@ -51,15 +54,15 @@ if not exist "%BUILD%" mkdir "%BUILD%"
 
 if exist "%BUILD%\build.ninja" goto :build
 call meson setup "%BUILD%" --cross-file "%BUILD%\cross.ini" ^
-   -Dbuildtype=debugoptimized -Db_ndebug=true ^
+   -Dbuildtype=release -Db_ndebug=true ^
+   -Db_lto=true -Db_lto_mode=thin -Dallow-broken-lto=true ^
    -Dplatforms=android -Dplatform-sdk-version=34 -Dandroid-stub=true -Dandroid-strict=false ^
    -Dandroid-libbacktrace=disabled ^
    -Dvulkan-drivers=amd -Dgallium-drivers= -Dvulkan-layers= -Dtools= ^
    -Dllvm=disabled -Dzstd=disabled -Dlmsensors=disabled -Dperfetto=false ^
    -Dglx=disabled -Dgbm=disabled -Degl=disabled -Dgles1=disabled -Dgles2=disabled ^
    -Dallow-fallback-for=libdrm,perfetto --force-fallback-for=expat,libdrm,zlib ^
-   -Dlibdrm:default_library=static -Dexpat:default_library=static -Dzlib:default_library=static ^
-   -Dc_args=-march=armv8.2-a -Dcpp_args=-march=armv8.2-a
+   -Dlibdrm:default_library=static -Dexpat:default_library=static -Dzlib:default_library=static
 if errorlevel 1 exit /b 1
 
 :build
@@ -67,7 +70,7 @@ ninja -C "%BUILD%" src/amd/vulkan/libvulkan_radeon.so
 if errorlevel 1 exit /b 1
 
 if not exist dist mkdir dist
-"%NDK%\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-strip.exe" -o "%BUILD%\vulkan.radeon.so" "%BUILD%\src\amd\vulkan\libvulkan_radeon.so"
+"%NDK%\toolchains\llvm\prebuilt\windows-x86_64\bin\llvm-strip.exe" --strip-unneeded -o "%BUILD%\vulkan.radeon.so" "%BUILD%\src\amd\vulkan\libvulkan_radeon.so"
 if errorlevel 1 exit /b 1
 python android\package.py "%BUILD%\vulkan.radeon.so" dist
 exit /b %errorlevel%

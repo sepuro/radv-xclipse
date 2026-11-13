@@ -342,6 +342,9 @@ radv_is_rt_wave64_enabled(const struct radv_physical_device *pdev)
 bool
 radv_enable_rt(const struct radv_physical_device *pdev)
 {
+   if (!ac_xclipse_rt_enabled(&pdev->info))
+      return false;
+
    if (!pdev->info.compiler_info.has_image_bvh_intersect_ray && !radv_emulate_rt(pdev))
       return false;
 

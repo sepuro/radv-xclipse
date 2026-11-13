@@ -1,0 +1,92 @@
+name: Build & Release RADV Xclipse (Android + Wayland)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    name: Build RADV Xclipse (NDK r29 + ThinLTO)
+    runs-on: ubuntu-24.04
+
+    env:
+      NDK_VERSION: r29
+      NDK_DIR: ${{ github.workspace }}/.ndk/android-ndk-r29
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            binutils \
+            bison \
+            curl \
+            flex \
+            glslang-tools \
+            ninja-build \
+            patchelf \
+            pkg-config \
+            tar \
+            unzip \
+            zip
+          python3 -m pip install --upgrade pip
+          python3 -m pip install meson mako packaging pyyaml
+
+      - name: Restore cached Android NDK r29
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NDK_DIR }}
+          key: android-ndk-${{ runner.os }}-${{ env.NDK_VERSION }}
+
+      - name: Download Android NDK r29 (on cache miss)
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$(dirname "$NDK_DIR")"
+          curl -fsSL --retry 5 --retry-delay 10 \
+            "https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip" \
+            -o /tmp/android-ndk.zip
+          unzip -q /tmp/android-ndk.zip -d "$(dirname "$NDK_DIR")"
+          rm -f /tmp/android-ndk.zip
+
+      - name: Export ANDROID_NDK_HOME
+        run: echo "ANDROID_NDK_HOME=${NDK_DIR}" >> "$GITHUB_ENV"
+
+      - name: Build Android driver package
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Build Wayland driver package
+        run: |
+          chmod +x build-wayland.sh
+          ./build-wayland.sh
+
+      - name: List packaged artifacts
+        run: ls -lh dist/
+
+      - name: Upload radv-xclipse-android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radv-xclipse-android
+          path: dist/radv-xclipse-[0-9]*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload radv-xclipse-wayland artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radv-xclipse-wayland
+          path: dist/radv-xclipse-wayland-*.zip
+          if-no-files-found: error
+          retention-days: 30

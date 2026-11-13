@@ -219,11 +219,12 @@ static const struct ac_xclipse_chip ac_xclipse_chips[AC_XCLIPSE_MODEL_COUNT] = {
    /*                       name       codename         titan  rt     ctxinit nopf   pacing unstable */
    [AC_XCLIPSE_NONE]    = {"none",    NULL,            false, true,  false,  false, false, false},
    [AC_XCLIPSE_920]     = {"920",     "VANGOGHLITE",   false, true,  false,  false, true,  false,
-                           {64, 3, 8, 0x03ff0154, 0x00c00000, false}},
+                           {64, 3, 8, 0x03ff0154, 0x00c00000, true}},
    [AC_XCLIPSE_530]     = {"530",     "TITAN",         true,  false, true,   false, false, false,
-                           {0, 4, 32, 0x06ff0154, 0x03e00000, false}},
+                           {0, 4, 32, 0x06ff0154, 0x03e00000, true}},
    [AC_XCLIPSE_940]     = {"940",     "MAGELLAN CARL", true,  true,  true,   true,  false, false},
-   [AC_XCLIPSE_540]     = {"540",     "ARIEL",         true,  false, true,   true,  false, false},
+   [AC_XCLIPSE_540]     = {"540",     "ARIEL",         true,  false, true,   true,  false, false,
+                           {0, 4, 32, 0x06ff0154, 0x03e00000, true}},
    /* The 950's early vsprobe timeouts and the 960's draw timeouts were mid-IB preemption with
     * register shadowing, now off on every Xclipse (see has_kernelq_reg_shadowing). The 950's BVH
     * build hang predates that and is untested since. */
@@ -274,6 +275,29 @@ ac_xclipse_full_db_flush(const struct radeon_info *info)
       knob = xclipse_knob_int("RADV_XCLIPSE_DBFLUSH", "debug.radv_xclipse_dbflush", &src);
    }
    return (info->xclipse_model != AC_XCLIPSE_NONE || info->family == CHIP_ARIEL) && knob != 0;
+}
+
+/* RADV_XCLIPSE_RT / debug.radv_xclipse_rt: 0 = disable RT extensions/BVH, 1 = enable (on chips
+ * with RT hardware). Default off (0) on Xclipse 950 (GALILEO) and 960 (JUNO) to avoid GPU/system
+ * hangs in DX12/RT titles; default on (1) on 920 and 940. Chips without RT HW (530/540/550)
+ * always stay off. */
+bool
+ac_xclipse_rt_enabled(const struct radeon_info *info)
+{
+   if (!ac_xclipse_chip_info(info)->has_rt)
+      return false;
+   if (info->xclipse_model == AC_XCLIPSE_NONE)
+      return true;
+
+   static int knob = -2;
+   if (knob == -2) {
+      const char *src;
+      knob = xclipse_knob_int("RADV_XCLIPSE_RT", "debug.radv_xclipse_rt", &src);
+   }
+   if (knob >= 0)
+      return knob != 0;
+
+   return info->xclipse_model != AC_XCLIPSE_950 && info->xclipse_model != AC_XCLIPSE_960;
 }
 
 /* Like xclipse_knob_int but accepts 0x-prefixed hex, for register-shaped values. -1 = unset. */
@@ -724,8 +748,9 @@ ac_fill_compiler_info(struct radeon_info *info, const struct drm_amdgpu_info_dev
       (info->family >= CHIP_MI100 && info->family != CHIP_NAVI10 && info->family != CHIP_GFX1013);
    /* GFX1013 is GFX10 plus ray tracing instructions */
    out->has_image_bvh_intersect_ray = info->gfx_level >= GFX10_3 || info->family == CHIP_GFX1013;
-   /* Xclipse chips without ray tracing hardware (530, 540): no BVH instructions, no RT extensions. */
-   if (!ac_xclipse_chip_info(info)->has_rt)
+   /* Xclipse chips without RT hardware (530, 540, 550) or with RT disabled by default/override
+    * (950/960 unless RADV_XCLIPSE_RT=1): no BVH instructions, no RT extensions. */
+   if (!ac_xclipse_rt_enabled(info))
       out->has_image_bvh_intersect_ray = false;
 
    /* On newer chips, it is not necessary for NGG shaders to request
@@ -1513,7 +1538,7 @@ ac_identify_chip(struct radeon_info *info, const struct drm_amdgpu_info_device *
       info->rt_ip_version = RT_2_0;
    else if (info->gfx_level >= GFX10_3 || info->family == CHIP_GFX1013)
       info->rt_ip_version = RT_1_1;
-   if (!ac_xclipse_chip_info(info)->has_rt)
+   if (!ac_xclipse_rt_enabled(info))
       info->rt_ip_version = RT_NONE;
 
    info->family_id = device_info->family;

@@ -75,9 +75,14 @@ strip = '$BIN/llvm-strip'
 pkg-config = '$(command -v pkg-config)'
 
 [properties]
-cpp_link_args = ['-static-libstdc++']
 sys_root = '$SYSROOT'
 pkg_config_libdir = ['$TPREFIX/lib/pkgconfig', '$TPREFIX/share/pkgconfig']
+
+[built-in options]
+c_args = ['-march=armv8.2-a+fp16+dotprod+crypto', '-mtune=cortex-a78', '-O3', '-fno-semantic-interposition', '-fdata-sections', '-ffunction-sections', '-fvisibility=hidden']
+cpp_args = ['-march=armv8.2-a+fp16+dotprod+crypto', '-mtune=cortex-a78', '-O3', '-fno-semantic-interposition', '-fdata-sections', '-ffunction-sections', '-fvisibility=hidden']
+c_link_args = ['-fuse-ld=lld', '-Wl,--gc-sections', '-Wl,--icf=safe', '-Wl,-O3', '-Wl,-z,max-page-size=16384']
+cpp_link_args = ['-static-libstdc++', '-fuse-ld=lld', '-Wl,--gc-sections', '-Wl,--icf=safe', '-Wl,-O3', '-Wl,-z,max-page-size=16384']
 
 [host_machine]
 system = 'android'
@@ -90,15 +95,15 @@ if [ ! -f "$BUILD/build.ninja" ]; then
    # The options of build.sh plus the Wayland platform. android-strict=false (as in build.sh) is
    # required: strict mode hides VK_KHR_wayland_surface.
    meson setup "$BUILD" --cross-file "$BUILD/cross.ini" \
-      -Dbuildtype=debugoptimized -Db_ndebug=true \
+      -Dbuildtype=release -Db_ndebug=true \
+      -Db_lto=true -Db_lto_mode=thin -Dallow-broken-lto=true \
       -Dplatforms=android,wayland -Dplatform-sdk-version=34 -Dandroid-stub=true -Dandroid-strict=false \
       -Dandroid-libbacktrace=disabled \
       -Dvulkan-drivers=amd -Dgallium-drivers= -Dvulkan-layers= -Dtools= \
       -Dllvm=disabled -Dzstd=disabled -Dlmsensors=disabled -Dperfetto=false \
       -Dglx=disabled -Dgbm=disabled -Degl=disabled -Dgles1=disabled -Dgles2=disabled \
       -Dallow-fallback-for=libdrm,perfetto --force-fallback-for=expat,libdrm,zlib \
-      -Dlibdrm:default_library=static -Dexpat:default_library=static -Dzlib:default_library=static \
-      -Dc_args=-march=armv8.2-a -Dcpp_args=-march=armv8.2-a
+      -Dlibdrm:default_library=static -Dexpat:default_library=static -Dzlib:default_library=static
 fi
 
 ninja -C "$BUILD" src/amd/vulkan/libvulkan_radeon.so
@@ -108,7 +113,7 @@ ninja -C "$BUILD" src/amd/vulkan/libvulkan_radeon.so
 DRIVER=libvulkan_freedreno_radv.so
 STAGE="$BUILD/stage"
 rm -rf "$STAGE" && mkdir -p "$STAGE/licenses"
-"$BIN/llvm-strip" -o "$STAGE/$DRIVER" "$BUILD/src/amd/vulkan/libvulkan_radeon.so"
+"$BIN/llvm-strip" --strip-unneeded -o "$STAGE/$DRIVER" "$BUILD/src/amd/vulkan/libvulkan_radeon.so"
 for l in libwayland-client.so libffi.so libandroid-support.so; do
    cp -L "$TPREFIX/lib/$l" "$STAGE/$l"
 done

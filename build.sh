@@ -52,8 +52,11 @@ cpp = '$BIN/aarch64-linux-android34-clang++$WRAP'
 ar = '$BIN/llvm-ar$EXE'
 strip = '$BIN/llvm-strip$EXE'
 
-[properties]
-cpp_link_args = ['-static-libstdc++']
+[built-in options]
+c_args = ['-march=armv8.2-a+fp16+dotprod+crypto', '-mtune=cortex-a78', '-O3', '-fno-semantic-interposition', '-fdata-sections', '-ffunction-sections', '-fvisibility=hidden']
+cpp_args = ['-march=armv8.2-a+fp16+dotprod+crypto', '-mtune=cortex-a78', '-O3', '-fno-semantic-interposition', '-fdata-sections', '-ffunction-sections', '-fvisibility=hidden']
+c_link_args = ['-fuse-ld=lld', '-Wl,--gc-sections', '-Wl,--icf=safe', '-Wl,-O3', '-Wl,-z,max-page-size=16384']
+cpp_link_args = ['-static-libstdc++', '-fuse-ld=lld', '-Wl,--gc-sections', '-Wl,--icf=safe', '-Wl,-O3', '-Wl,-z,max-page-size=16384']
 
 [host_machine]
 system = 'android'
@@ -64,19 +67,19 @@ EOF
 
 if [ ! -f "$BUILD/build.ninja" ]; then
    meson setup "$BUILD" --cross-file "$BUILD/cross.ini" \
-      -Dbuildtype=debugoptimized -Db_ndebug=true \
+      -Dbuildtype=release -Db_ndebug=true \
+      -Db_lto=true -Db_lto_mode=thin -Dallow-broken-lto=true \
       -Dplatforms=android -Dplatform-sdk-version=34 -Dandroid-stub=true -Dandroid-strict=false \
       -Dandroid-libbacktrace=disabled \
       -Dvulkan-drivers=amd -Dgallium-drivers= -Dvulkan-layers= -Dtools= \
       -Dllvm=disabled -Dzstd=disabled -Dlmsensors=disabled -Dperfetto=false \
       -Dglx=disabled -Dgbm=disabled -Degl=disabled -Dgles1=disabled -Dgles2=disabled \
       -Dallow-fallback-for=libdrm,perfetto --force-fallback-for=expat,libdrm,zlib \
-      -Dlibdrm:default_library=static -Dexpat:default_library=static -Dzlib:default_library=static \
-      -Dc_args=-march=armv8.2-a -Dcpp_args=-march=armv8.2-a
+      -Dlibdrm:default_library=static -Dexpat:default_library=static -Dzlib:default_library=static
 fi
 
 ninja -C "$BUILD" src/amd/vulkan/libvulkan_radeon.so
 
 mkdir -p dist
-"$BIN/llvm-strip$EXE" -o "$BUILD/vulkan.radeon.so" "$BUILD/src/amd/vulkan/libvulkan_radeon.so"
+"$BIN/llvm-strip$EXE" --strip-unneeded -o "$BUILD/vulkan.radeon.so" "$BUILD/src/amd/vulkan/libvulkan_radeon.so"
 "$PYTHON" android/package.py "$BUILD/vulkan.radeon.so" dist
