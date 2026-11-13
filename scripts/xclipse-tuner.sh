@@ -8,7 +8,7 @@
 # (For reference, debug.radv_xclipse_tfq is not present in this driver tree.)
 #
 # Usage:
-#   ./scripts/xclipse-tuner.sh [--quality-max | --cool-stable | --compat-fix | --reset | --status]
+#   ./scripts/xclipse-tuner.sh [--quality-max | --cool-stable | --cod-bo2 | --t6requiem | --compat-fix | --reset | --status]
 # ==============================================================================
 set -eu
 
@@ -21,9 +21,11 @@ Usage: xclipse-tuner.sh <mode>
 Modes:
   --quality-max   BC7->ASTC 4x4 (39.1 dB), PBB=1, DCC=1, NOPF=1
   --cool-stable   Default BC7->BC3 (lower load peak), PBB=1, DCC=1, NOPF=1, PACE=2 (920)
+  --cod-bo2       Plutonium T6 / BO2 over DXVK: PBB=1, DCC=1, NOPF=1, BC7->BC3, PACE=1, nircache
+  --t6requiem     T6ReQuieM / BO2 Zombies: PBB=1, TFQ=1, DCC=1, DCC_SMALL=1, BC5/BC7_ALIAS=1, NOPF=1
   --compat-fix    Disable DCC on small <=512x512 render targets (dcc_small=0)
-  --reset         Clear debug.radv_xclipse_* overrides back to driver defaults
-  --status        Show current debug.radv_xclipse_* property values
+  --reset         Clear debug.radv_xclipse_* and debug.radv_perftest overrides
+  --status        Show current debug.radv_xclipse_* and debug.radv_perftest values
 EOF
    exit 1
 fi
@@ -60,6 +62,7 @@ get_prop() {
 ALL_PROPS="
 debug.radv_xclipse_bc7_astc
 debug.radv_xclipse_pbb
+debug.radv_xclipse_tfq
 debug.radv_xclipse_dcc
 debug.radv_xclipse_dcc_small
 debug.radv_xclipse_nopf
@@ -68,6 +71,7 @@ debug.radv_xclipse_rt
 debug.radv_xclipse_bc5_alias
 debug.radv_xclipse_bc7_alias
 debug.radv_xclipse_dbflush
+debug.radv_perftest
 "
 
 case "$MODE" in
@@ -85,6 +89,27 @@ case "$MODE" in
       set_prop debug.radv_xclipse_dcc 1
       set_prop debug.radv_xclipse_nopf 1
       set_prop debug.radv_xclipse_pace 2
+      ;;
+   --cod-bo2)
+      echo "[xclipse-tuner] Applying profile: --cod-bo2 (Plutonium T6 / T6ReQuieM over DXVK)"
+      set_prop debug.radv_xclipse_bc7_astc 0
+      set_prop debug.radv_xclipse_pbb 1
+      set_prop debug.radv_xclipse_dcc 1
+      set_prop debug.radv_xclipse_nopf 1
+      set_prop debug.radv_xclipse_pace 1
+      set_prop debug.radv_perftest nircache
+      ;;
+   --t6requiem)
+      echo "[xclipse-tuner] Applying profile: --t6requiem (Call of Duty: Black Ops II / Zombies)"
+      set_prop debug.radv_xclipse_pbb 1
+      set_prop debug.radv_xclipse_tfq 1
+      set_prop debug.radv_xclipse_dcc 1
+      set_prop debug.radv_xclipse_dcc_small 1
+      set_prop debug.radv_xclipse_bc5_alias 1
+      set_prop debug.radv_xclipse_bc7_alias 1
+      set_prop debug.radv_xclipse_nopf 1
+      set_prop debug.radv_perftest nircache
+      echo "[xclipse-tuner] Note: debug.radv_xclipse_tfq is set for compatibility (not consumed by this Mesa 26 tree)."
       ;;
    --compat-fix)
       echo "[xclipse-tuner] Applying profile: --compat-fix"

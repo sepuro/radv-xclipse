@@ -177,6 +177,9 @@ disk_cache_create_custom(const char *gpu_name, const char *driver_id,
 void
 disk_cache_set_default_dir(const char *dir);
 
+bool
+disk_cache_has_default_dir(void);
+
 /**
  * Destroy a cache object, (freeing all associated resources).
  */
@@ -297,6 +300,12 @@ disk_cache_create_custom(const char *gpu_name, const char *driver_id,
 static inline void
 disk_cache_set_default_dir(const char *dir)
 {
+}
+
+static inline bool
+disk_cache_has_default_dir(void)
+{
+   return false;
 }
 
 static inline void

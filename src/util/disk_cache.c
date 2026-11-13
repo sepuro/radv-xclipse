@@ -226,7 +226,10 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    const char *max_size_str;
 
 #if defined(ANDROID) || defined(__ANDROID__) || DETECT_OS_ANDROID
-   if (!os_get_option_secure("XDG_CACHE_HOME") && !os_get_option("MESA_SHADER_CACHE_DIR") && !os_get_option("MESA_GLSL_CACHE_DIR")) {
+   /* Do not overwrite a writable app/container dir already chosen by the driver
+    * (e.g. Wine/Winlator where /proc/self/cmdline is a Windows .exe name, not an APK id). */
+   if (!disk_cache_has_default_dir() && !os_get_option_secure("XDG_CACHE_HOME") &&
+       !os_get_option("MESA_SHADER_CACHE_DIR") && !os_get_option("MESA_GLSL_CACHE_DIR")) {
       FILE *f = fopen("/proc/self/cmdline", "r");
       if (f) {
          char pkg[256] = {0};
@@ -238,19 +241,38 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
             if (colon)
                *colon = '\0';
             pkg[strcspn(pkg, "\r\n")] = '\0';
-            if (pkg[0]) {
-               char app_cache[512];
-               snprintf(app_cache, sizeof(app_cache), "/data/data/%s/cache", pkg);
-               disk_cache_set_default_dir(app_cache);
+            size_t len = strlen(pkg);
+            const bool is_exe = len >= 4 &&
+               tolower((unsigned char)pkg[len - 4]) == '.' &&
+               tolower((unsigned char)pkg[len - 3]) == 'e' &&
+               tolower((unsigned char)pkg[len - 2]) == 'x' &&
+               tolower((unsigned char)pkg[len - 1]) == 'e';
+            if (pkg[0] && !is_exe && strchr(pkg, '.') &&
+                !strchr(pkg, '/') && !strchr(pkg, '\\')) {
+               char app_root[280];
+               struct stat st;
+               snprintf(app_root, sizeof(app_root), "/data/data/%s", pkg);
+               if (stat(app_root, &st) == 0 && S_ISDIR(st.st_mode)) {
+                  char app_cache[512];
+                  snprintf(app_cache, sizeof(app_cache), "/data/data/%s/cache", pkg);
+                  disk_cache_set_default_dir(app_cache);
+               }
             }
          }
       }
    }
 #endif
 
+#if defined(ANDROID) || defined(__ANDROID__) || DETECT_OS_ANDROID
+   /* Prefer multipart indexed cache DB over thousands of loose files on Android storage. */
+   const bool android_db_default = !debug_get_bool_option("MESA_DISK_CACHE_MULTI_FILE", false);
+#else
+   const bool android_db_default = false;
+#endif
+
    if (debug_get_bool_option("MESA_DISK_CACHE_SINGLE_FILE", false)) {
       cache_type = DISK_CACHE_SINGLE_FILE;
-   } else if (debug_get_bool_option("MESA_DISK_CACHE_DATABASE", false)) {
+   } else if (debug_get_bool_option("MESA_DISK_CACHE_DATABASE", android_db_default)) {
       cache_type = DISK_CACHE_DATABASE;
       /* Since switching the default cache to <mesa_shader_cache_db>, remove the
        * old cache folder if it hasn't been modified for more than 7 days.

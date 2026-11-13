@@ -189,10 +189,10 @@ radv_xclipse_mtype(struct radv_amdgpu_winsys *ws)
    }
 #endif
 
-   if (v < 0 && ws->info.pci_id == 0x73a0) {
-      v = 0; /* PAL parity on our chip */
+   if (v < 0 && (ws->info.xclipse_model != AC_XCLIPSE_NONE || ws->info.pci_id == 0x73a0)) {
+      v = 0; /* PAL parity on Xclipse */
       if (!e)
-         src = "default(0x73a0 PAL parity)";
+         src = "default(Xclipse PAL parity)";
    }
    if (v > 5)
       v = -1;

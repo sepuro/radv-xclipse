@@ -496,15 +496,20 @@ radv_xclipse_hash_knobs(blake3_hasher *ctx)
 static void
 radv_xclipse_android_disk_cache(const struct radv_physical_device *pdev)
 {
-   if (pdev->info.pci_id != 0x73a0)
+   if (pdev->info.xclipse_model == AC_XCLIPSE_NONE && pdev->info.family != CHIP_ARIEL)
       return;
 
    char dir[512] = {0};
    const char *how = "no writable app-private dir, cache stays off";
    const char *t = getenv("TMPDIR");
+   const char *xdg = getenv("XDG_CACHE_HOME");
    if (t && !strncmp(t, "/data/", 6) && access(t, W_OK) == 0) {
       snprintf(dir, sizeof(dir), "%s", t);
       how = "TMPDIR";
+   } else if (xdg && xdg[0] == '/' && strncmp(xdg, "/storage/", 9) != 0 &&
+              strncmp(xdg, "/sdcard/", 8) != 0 && access(xdg, W_OK) == 0) {
+      snprintf(dir, sizeof(dir), "%s", xdg);
+      how = "XDG_CACHE_HOME";
    } else {
       Dl_info info;
       if (dladdr(radv_xclipse_android_disk_cache, &info) && info.dli_fname &&
@@ -518,6 +523,13 @@ radv_xclipse_android_disk_cache(const struct radv_physical_device *pdev)
          else
             dir[0] = '\0';
       }
+   }
+
+   /* Wine/Winlator containers may use rootfs /tmp (not under /data/ and not FUSE /storage/). */
+   if (!dir[0] && t && t[0] == '/' && strncmp(t, "/storage/", 9) != 0 &&
+       strncmp(t, "/sdcard/", 8) != 0 && access(t, W_OK) == 0) {
+      snprintf(dir, sizeof(dir), "%s", t);
+      how = "TMPDIR(container)";
    }
 
    disk_cache_set_default_dir(dir[0] ? dir : NULL);
@@ -547,7 +559,7 @@ radv_device_get_cache_uuid(struct radv_physical_device *pdev, void *uuid)
 #endif
 
 #if DETECT_OS_ANDROID
-   if (pdev->info.pci_id == 0x73a0)
+   if (pdev->info.xclipse_model != AC_XCLIPSE_NONE || pdev->info.family == CHIP_ARIEL)
       radv_xclipse_hash_knobs(&ctx);
 #endif
 
@@ -2908,6 +2920,73 @@ radv_get_driconf_device_version(const struct radv_physical_device *pdev)
    return device_version;
 }
 
+static bool
+radv_is_t6_exe_basename(const char *str)
+{
+   if (!str || !str[0])
+      return false;
+
+   const char *base = str;
+   for (const char *p = str; *p; p++) {
+      if (*p == '/' || *p == '\\')
+         base = p + 1;
+   }
+
+   static const char *const t6_names[] = {
+      "t6rmp.exe",
+      "t6rmp",
+      "t6rzm.exe",
+      "t6rzm",
+      "t6mp.exe",
+      "t6mp",
+      "t6zm.exe",
+      "t6zm",
+      "plutonium-bootstrapper-win32.exe",
+      "plutonium-bootstrapper-win32",
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(t6_names); i++) {
+      if (!strcasecmp(base, t6_names[i]))
+         return true;
+   }
+   return false;
+}
+
+static bool
+radv_is_t6_process(void)
+{
+   static int proc_is_t6 = -1;
+   if (proc_is_t6 >= 0)
+      return proc_is_t6 != 0;
+
+   int found = 0;
+   int fd = open("/proc/self/cmdline", O_RDONLY | O_CLOEXEC);
+   if (fd >= 0) {
+      char buf[1024];
+      ssize_t n = read(fd, buf, sizeof(buf) - 1);
+      close(fd);
+      if (n > 0) {
+         buf[n] = '\0';
+         ssize_t pos = 0;
+         while (pos < n) {
+            const char *arg = &buf[pos];
+            if (arg[0] && radv_is_t6_exe_basename(arg)) {
+               found = 1;
+               break;
+            }
+            pos += (ssize_t)strlen(arg) + 1;
+         }
+      }
+   }
+   proc_is_t6 = found;
+   return found != 0;
+}
+
+static bool
+radv_is_t6_app(const struct radv_instance *instance)
+{
+   return radv_is_t6_exe_basename(instance->vk.app_info.app_name) || radv_is_t6_process();
+}
+
 static void
 radv_init_dri_options(struct radv_physical_device *pdev)
 {
@@ -2929,6 +3008,19 @@ radv_init_dri_options(struct radv_physical_device *pdev)
       const bool is_d3d9 = instance->vk.app_info.app_version & 0x1;
 
       drirc->debug.disable_trunc_coord &= !is_d3d9;
+
+      /* D3D9 titles (such as CoD BO2 / Plutonium T6) reuse the same SPIR-V shaders across many
+       * render-state permutations: keep NIR cached in pipeline caches on Xclipse to avoid CPU stutter. */
+      if (is_d3d9 && (pdev->info.xclipse_model != AC_XCLIPSE_NONE || pdev->info.family == CHIP_ARIEL))
+         drirc->performance.enable_nir_cache = true;
+   }
+
+   /* Direct fallback detection for CoD: Black Ops II (Plutonium T6 / T6ReQuieM) under Wine/Winlator
+    * where Linux comm/execname may report wine-preloader instead of the Windows executable name. */
+   if (radv_is_t6_app(instance)) {
+      drirc->debug.disable_aniso_single_level = true;
+      drirc->performance.enable_nir_cache = true;
+      drirc->performance.force_exclusive_image = true;
    }
 }
 

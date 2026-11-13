@@ -573,7 +573,8 @@ bc_eac_lut_init(struct radv_device *device)
    if (device->meta_state.xclipse_bc.eac_lut_bo)
       return true;
    if (radv_bo_create(device, NULL, BC_EAC_LUT_BYTES, 4096, RADEON_DOMAIN_GTT,
-                      RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
+                      RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_GTT_WC | RADEON_FLAG_READ_ONLY |
+                         RADEON_FLAG_NO_INTERPROCESS_SHARING,
                       RADV_BO_PRIORITY_UPLOAD_BUFFER, 0, true, &device->meta_state.xclipse_bc.eac_lut_bo) != VK_SUCCESS)
       return false;
    void *p = radv_buffer_map(device->ws, device->meta_state.xclipse_bc.eac_lut_bo);

@@ -222,7 +222,20 @@ Permite ajustar propiedades `debug.radv_xclipse_*` desde `adb shell`, Termux o S
 ```sh
 ./scripts/xclipse-tuner.sh --quality-max   # BC7->ASTC (39.1 dB), PBB=1, DCC=1, NOPF=1
 ./scripts/xclipse-tuner.sh --cool-stable   # BC7->BC3 (menor pico de carga), PBB=1, DCC=1, NOPF=1, PACE=2 (920)
+./scripts/xclipse-tuner.sh --cod-bo2       # Perfil BO2 Plutonium T6 / T6ReQuieM sobre DXVK (PBB=1, DCC=1, nircache)
+./scripts/xclipse-tuner.sh --t6requiem     # Perfil BO2 Zombies / T6ReQuieM (PBB=1, DCC=1, dcc_small=1, BC5/BC7 alias=1, NOPF=1)
 ./scripts/xclipse-tuner.sh --compat-fix    # Desactiva DCC en render targets <=512x512 (dcc_small=0)
 ./scripts/xclipse-tuner.sh --status        # Muestra valores actuales
 ./scripts/xclipse-tuner.sh --reset         # Restaura los defaults del driver
 ```
+
+### 9.4 Optimizaciones Específicas para Call of Duty: Black Ops II (Plutonium T6 / T6ReQuieM + DXVK)
+- **Perfil `driconf` y detección directa en driver ([`01-radv-performance.conf`](src/amd/vulkan/01-radv-performance.conf), [`radv_physical_device.c`](src/amd/vulkan/radv_physical_device.c)):** Coincide automáticamente por `application_name_match`, `executable_regexp` y lectura directa de `/proc/self/cmdline` (`radv_is_t6_app()`) para `t6rmp.exe`, `t6rzm.exe`, `t6mp.exe`, `t6zm.exe` y `plutonium-bootstrapper-win32.exe`, activando:
+  - `radv_enable_nir_cache = true` (también activado automáticamente para clientes **DXVK D3D9** en Xclipse): reutiliza la conversión SPIR-V → NIR entre permutaciones de estado D3D9, optimizando GPL (`VK_EXT_graphics_pipeline_library` *fast-linking*) y `VK_EXT_shader_object`.
+  - `radv_force_exclusive_image = true`: mantiene imágenes y *render targets* en rutas exclusivas con DCC/HTILE activo sin barreras de transferencia entre colas.
+  - `radv_disable_aniso_single_level = true`: omite filtrado anisotrópico redundante en texturas de 1 solo nivel de mipmap (UI/HUD) mediante `ANISO_OVERRIDE_GFX10`, manteniendo intactas las texturas 3D con mipmaps.
+- **Compresión BC4/BC5 → EAC y BC7 → BC3/ASTC en Wave32 ([`radv_meta_bc_decode.c`](src/amd/vulkan/meta/radv_meta_bc_decode.c)):** Ejecuta los *compute shaders* de transcodificación con `requiredSubgroupSize = 32`, aliasing de memoria activo (`bc5_alias = 1`, `bc7_alias = 1`) y tabla LUT EAC marcada `RADEON_FLAG_GTT_WC | RADEON_FLAG_READ_ONLY`.
+- **Memoria dinámica `HOST_VISIBLE | HOST_COHERENT` y MTYPE ([`radv_physical_device.c`](src/amd/vulkan/radv_physical_device.c), [`radv_amdgpu_bo.c`](src/amd/vulkan/winsys/amdgpu/radv_amdgpu_bo.c)):** Los buffers dinámicos y *staging* de DXVK usan `RADEON_DOMAIN_GTT` + `RADEON_FLAG_GTT_WC` (`USWC` *Write-Combining*), `VM_ALWAYS_VALID` (`RADEON_FLAG_PREFER_LOCAL_BO`), caché de reutilización `ibcache` (hasta 16 MiB) y `radv_xclipse_mtype()` extendido a todas las GPUs Xclipse (`AC_XCLIPSE_*`).
+- **Caché de Shaders en Disco sin Stutter de E/S en Android/Wine ([`disk_cache.c`](src/util/disk_cache.c) / [`radv_physical_device.c`](src/amd/vulkan/radv_physical_device.c)):**
+  - Activa por defecto `DISK_CACHE_DATABASE` (`mesa_shader_cache_db`, base de datos indexada multiparte) en Android en lugar de crear miles de archivos sueltos (se puede revertir con `MESA_DISK_CACHE_MULTI_FILE=1` o `MESA_DISK_CACHE_DATABASE=0`).
+  - Extiende `radv_xclipse_android_disk_cache()` y `radv_xclipse_hash_knobs()` a **todas** las GPUs Xclipse (no solo `0x73a0`) con fallback seguro para contenedores Wine/Winlator (`TMPDIR`, `XDG_CACHE_HOME`, directorio del driver), evitando que `/proc/self/cmdline` (`t6rmp.exe`) sobrescriba y desactive el directorio de caché en disco.

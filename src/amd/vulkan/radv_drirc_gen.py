@@ -134,6 +134,9 @@ def declare_options():
           ("Override the codepath for framebuffer clears, image clears, copies, blits, and MSAA resolves. " +
            "(0 = default, 1 = fragment shader, 2 = compute shader, 3 = fast clear)"),
           c_name="image_meta_path"),
+        B("radv_enable_nir_cache", False,
+          "Cache SPIR-V to NIR conversion results in the pipeline cache to reduce shader stutter.",
+          c_name="enable_nir_cache"),
     ]
 
     features_options = [

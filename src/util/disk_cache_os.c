@@ -979,6 +979,12 @@ disk_cache_set_default_dir(const char *dir)
       snprintf(disk_cache_default_dir, sizeof(disk_cache_default_dir), "%s", dir);
 }
 
+bool
+disk_cache_has_default_dir(void)
+{
+   return disk_cache_default_dir[0] != '\0';
+}
+
 const char *
 disk_cache_generate_cache_dir(void *mem_ctx, const char *gpu_name,
                               const char *driver_id,
